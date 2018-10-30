@@ -109,6 +109,7 @@ public class HtmlTypedTextInterceptor implements TypedTextInterceptor {
                 addTagClosingSymbol(context);
                 break;
             case '>':
+                addClosingTag(context);
                 indentLineAfterTagClosingSymbol(context);
         }
     }
@@ -185,6 +186,39 @@ public class HtmlTypedTextInterceptor implements TypedTextInterceptor {
                 Exceptions.printStackTrace(ex);
             }
 
+        }
+    }
+    
+    private static void addClosingTag(MutableContext context) {
+        TokenSequence<HTMLTokenId> ts = LexUtilities.getTokenSequence((BaseDocument) context.getDocument(), context.getOffset(), HTMLTokenId.language());
+        
+        if (ts == null) {
+            return; //no html ts at the caret position
+        }
+        
+        ts.move(context.getOffset());
+        
+        if (!ts.moveNext()) {
+            return; //no token
+        }
+        
+        HTMLTokenId tid = ts.token().id();
+        if (tid == HTMLTokenId.WS) {
+            if (null != LexerUtils.followsToken(ts, HTMLTokenId.TAG_OPEN, true, false,
+                    HTMLTokenId.ARGUMENT,
+                    HTMLTokenId.VALUE,
+                    HTMLTokenId.VALUE_CSS,
+                    HTMLTokenId.VALUE_JAVASCRIPT,
+                    HTMLTokenId.OPERATOR,
+                    HTMLTokenId.WS,
+                    HTMLTokenId.EL_CLOSE_DELIMITER,
+                    HTMLTokenId.EL_CONTENT,
+                    HTMLTokenId.EL_OPEN_DELIMITER)) {
+                //we are in an open tag
+                context.setText("></test>", 1);
+                //ignore subsequent '>' if typed
+                insertIgnore = new DocumentInsertIgnore(context.getOffset() + 2, '>', -1); // NOI18N
+            }
         }
     }
 
