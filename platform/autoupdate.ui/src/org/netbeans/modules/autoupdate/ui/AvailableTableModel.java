@@ -43,7 +43,7 @@ public class AvailableTableModel extends UnitCategoryTableModel {
     //just prevents from gc, do not delete
     private OperationContainer container = Containers.forAvailable();
     private OperationContainer containerCustom = Containers.forCustomInstall ();
-    private static String col0, col1, col2, col3;
+    private static String col0, col1, col2, col3, col4, col5;
     
     /** Creates a new instance of AvailableTableModel
      * @param units 
@@ -114,9 +114,15 @@ public class AvailableTableModel extends UnitCategoryTableModel {
             res = u.getDisplayName();
             break;
         case 2 :
-            res = u.getCategoryName();
+            res = u.getDisplayVersion();
             break;
         case 3 :
+            res = u.getDisplayDate();
+            break;
+        case 4 :
+            res = u.getCategoryName();
+            break;
+        case 5 :
             res = u.getSourceIcon();
             break;
         }
@@ -126,7 +132,7 @@ public class AvailableTableModel extends UnitCategoryTableModel {
 
     @Override
     public int getColumnCount() {
-        return 4;
+        return 6;
     }
     
     @Override
@@ -144,6 +150,12 @@ public class AvailableTableModel extends UnitCategoryTableModel {
             res = String.class;
             break;
         case 3 :
+            res = String.class;
+            break;
+        case 4 :
+            res = String.class;
+            break;
+        case 5 :
             res = Image.class;
             break;
         }
@@ -166,14 +178,24 @@ public class AvailableTableModel extends UnitCategoryTableModel {
                 return col1;
             case 2 :
                 if (col2 == null) {
-                    col2 = getBundle("AvailableTableModel_Columns_Category");
+                    col2 = getBundle("AvailableTableModel_Columns_Version");
                 }
                 return col2;
             case 3 :
                 if (col3 == null) {
-                    col3 = getBundle ("AvailableTableModel_Source_Category");
+                    col3 = getBundle("AvailableTableModel_Columns_Date");
                 }
                 return col3;
+            case 4 :
+                if (col4 == null) {
+                    col4 = getBundle("AvailableTableModel_Columns_Category");
+                }
+                return col4;
+            case 5 :
+                if (col5 == null) {
+                    col5 = getBundle ("AvailableTableModel_Source_Category");
+                }
+                return col5;
         }
         
         assert false;
@@ -224,8 +246,12 @@ public class AvailableTableModel extends UnitCategoryTableModel {
                 } else if (getColumnName(1).equals(columnIdentifier)) {
                     return Unit.compareDisplayNames(unit1, unit2);
                 } else if (getColumnName(2).equals(columnIdentifier)) {
-                    return Unit.compareCategories(unit1, unit2);
+                    return Unit.compareDisplayVersions(unit1, unit2);
                 } else if (getColumnName(3).equals(columnIdentifier)) {
+                    return Unit.compareSimpleFormatDates(unit1, unit2);
+                } else if (getColumnName(4).equals(columnIdentifier)) {
+                    return Unit.compareCategories(unit1, unit2);
+                } else if (getColumnName(5).equals(columnIdentifier)) {
                     return Unit.Available.compareSourceCategories(unit1, unit2);
                 }                
                 return 0;
