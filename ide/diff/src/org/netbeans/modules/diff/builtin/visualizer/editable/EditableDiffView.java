@@ -64,6 +64,7 @@ import org.netbeans.api.diff.DiffController;
 import org.netbeans.api.editor.mimelookup.MimeLookup;
 import org.netbeans.api.editor.settings.FontColorNames;
 import org.netbeans.api.editor.settings.FontColorSettings;
+import org.netbeans.editor.BaseDocument;
 import org.netbeans.editor.BaseTextUI;
 import org.netbeans.spi.diff.DiffProvider;
 import org.netbeans.spi.diff.DiffControllerImpl;
@@ -892,6 +893,8 @@ public class EditableDiffView extends DiffControllerImpl implements DiffView, Do
             final StyledDocument doc1 = (StyledDocument) jEditorPane1.getEditorPane().getDocument();
             final StyledDocument doc2 = (StyledDocument) jEditorPane2.getEditorPane().getDocument();
             
+            final JTextComponent editorPane2 = jEditorPane2.getEditorPane();
+            
             final int offCurrent = jEditorPane2.getEditorPane().getCaretPosition();
             doc1.render(new Runnable() {
 
@@ -899,6 +902,13 @@ public class EditableDiffView extends DiffControllerImpl implements DiffView, Do
                 public void run () {
                     int offFirstStart = org.openide.text.NbDocument.findLineOffset(doc1, diff.getFirstStart() > 0 ? diff.getFirstStart() - 1 : 0);
                     jEditorPane1.getEditorPane().setCaretPosition(offFirstStart);
+                    Logger.getLogger(EditableDiffView.class.getName()).log(Level.INFO, ((Document)jEditorPane1.getEditorPane().getDocument()).toString());
+                    Logger.getLogger(EditableDiffView.class.getName()).log(Level.INFO, editorPane2.getDocument().toString());
+                    Logger.getLogger(EditableDiffView.class.getName()).log(Level.INFO, ((Document)jEditorPane1.getEditorPane().getDocument()).getProperty(BaseDocument.READ_LINE_SEPARATOR_PROP).toString());
+                    Logger.getLogger(EditableDiffView.class.getName()).log(Level.INFO, editorPane2.getDocument().getProperty(BaseDocument.READ_LINE_SEPARATOR_PROP).toString());
+                    // TODO: Get all properties and iterate over them
+//                    JOptionPane.showMessageDialog(null, doc1.getProperty(BaseDocument.READ_LINE_SEPARATOR_PROP));
+//                    JOptionPane.showMessageDialog(null, doc2.getProperty(BaseDocument.READ_LINE_SEPARATOR_PROP));
                 }
             });
             doc2.render(new Runnable() {
