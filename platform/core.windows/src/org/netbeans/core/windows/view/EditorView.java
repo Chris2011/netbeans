@@ -25,13 +25,17 @@ package org.netbeans.core.windows.view;
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.dnd.*;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.util.Arrays;
+import java.util.MissingResourceException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
 import javax.swing.border.Border;
 import org.netbeans.core.windows.*;
 import org.netbeans.core.windows.view.dnd.*;
+import org.openide.filesystems.FileUtil;
 import org.openide.util.*;
 import org.openide.windows.*;
 
@@ -179,6 +183,7 @@ public class EditorView extends ViewElement {
         private final WindowDnDManager windowDnDManager;
         
         private Component areaComponent;
+        private JPanel pnlCenter;
         
         
         public EditorAreaComponent(EditorView editorView, WindowDnDManager windowDnDManager) {
@@ -187,7 +192,69 @@ public class EditorView extends ViewElement {
             
             init();
         }
+        
+        private JPanel getCustomPanel(String text, Boolean isShortcut) {
+            JPanel textPanel = new JPanel();
+            JLabel textLabel = new JLabel(text);
+            Font labelFont = new Font(textLabel.getFont().getName(), Font.BOLD, 14);
+            
+            textLabel.setFont(labelFont);
+            textLabel.setForeground(isShortcut ? new Color(10, 100, 152) : Color.GRAY);
+            
+            textPanel.add(textLabel);
+            
+            return textPanel;
+        }
 
+        private boolean isSolaris () {
+            String osName = System.getProperty ("os.name");
+
+            return osName != null && osName.startsWith ("SunOS");
+        }
+        
+        private String getKeyStrokeAsText(KeyStroke keyStroke) {
+            if (keyStroke == null)
+                return "";
+            int modifiers = keyStroke.getModifiers ();
+            StringBuilder sb = new StringBuilder ();
+            if ((modifiers & InputEvent.CTRL_DOWN_MASK) > 0)
+                sb.append ("Ctrl+");
+            if ((modifiers & InputEvent.ALT_DOWN_MASK) > 0)
+                sb.append ("Alt+");
+            if ((modifiers & InputEvent.SHIFT_DOWN_MASK) > 0)
+                sb.append ("Shift+");
+            if ((modifiers & InputEvent.META_DOWN_MASK) > 0)
+                if (Utilities.isMac()) {
+                    // Mac cloverleaf symbol
+                    sb.append ("\u2318+");
+                } else if (isSolaris()) {
+                    // Sun meta symbol
+                    sb.append ("\u25C6+");
+                } else {
+                    sb.append ("Meta+");
+                }
+            if (keyStroke.getKeyCode () != KeyEvent.VK_SHIFT &&
+                keyStroke.getKeyCode () != KeyEvent.VK_CONTROL &&
+                keyStroke.getKeyCode () != KeyEvent.VK_META &&
+                keyStroke.getKeyCode () != KeyEvent.VK_ALT &&
+                keyStroke.getKeyCode () != KeyEvent.VK_ALT_GRAPH
+            )
+            sb.append (Utilities.keyToString (
+                KeyStroke.getKeyStroke (keyStroke.getKeyCode (), 0)
+            ));
+
+            return sb.toString();
+        }
+        
+        private String getKey(String path) {
+            Action action = FileUtil.getConfigObject(path, Action.class);
+            
+            if (action != null && action.getValue(Action.ACCELERATOR_KEY) != null) {
+                return getKeyStrokeAsText((KeyStroke)action.getValue(Action.ACCELERATOR_KEY));
+            }
+         
+            return "No shortcut assigned";
+        }
         
         private void init() {
             setLayout(new BorderLayout());
@@ -196,6 +263,8 @@ public class EditorView extends ViewElement {
 //            if (lfID.equals("Windows")) {
 //                setBackground((Color)UIManager.get("nb_workplace_fill"));
 //            }
+
+            showCommonShortcuts();
             
             // PENDING Adding image into empty area.
             String imageSource = Constants.SWITCH_IMAGE_SOURCE; // NOI18N
@@ -256,13 +325,116 @@ public class EditorView extends ViewElement {
                     || "Aqua".equals(UIManager.getLookAndFeel().getID()) ) //NOI18N
                 setOpaque( false);
         }
+
+        private void showCommonShortcuts() throws MissingResourceException {
+            this.pnlCenter = new JPanel(new GridBagLayout());
+            
+            GridBagConstraints constraints = new GridBagConstraints(); 
+            
+            constraints.anchor = GridBagConstraints.FIRST_LINE_END;
+            constraints.gridx = 0;
+            constraints.gridy = 0;
+            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_NewProject"), false), constraints);
+            
+            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
+            constraints.gridx = 1;
+            constraints.gridy = 0;
+            pnlCenter.add(getCustomPanel(getKey("Actions/Project/org-netbeans-modules-project-ui-NewProject.instance"), true), constraints);
+            
+            
+            constraints.anchor = GridBagConstraints.FIRST_LINE_END;
+            constraints.gridx = 0;
+            constraints.gridy = 1;
+            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_OpenProject"), false), constraints);
+            
+            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
+            constraints.gridx = 1;
+            constraints.gridy = 1;
+            
+            
+            pnlCenter.add(getCustomPanel(getKey("Actions/Project/org-netbeans-modules-project-ui-OpenProject.instance"), true), constraints);
+            constraints.anchor = GridBagConstraints.FIRST_LINE_END;
+            constraints.gridx = 0;
+            constraints.gridy = 2;
+            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_QuickSearch"), false), constraints);
+            
+            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
+            constraints.gridx = 1;
+            constraints.gridy = 2;
+            pnlCenter.add(getCustomPanel(getKey("Actions/Edit/org-netbeans-modules-quicksearch-QuickSearchAction.instance"), true), constraints);
+            
+            
+            constraints.anchor = GridBagConstraints.FIRST_LINE_END;
+            constraints.gridx = 0;
+            constraints.gridy = 3;
+            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_ProjectsWindow"), false), constraints);
+            
+            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
+            constraints.gridx = 1;
+            constraints.gridy = 3;
+            pnlCenter.add(getCustomPanel(getKey("Actions/Project/org-netbeans-modules-project-ui-ProjectTabAction-projectsPhysical.instance"), true), constraints);
+//            pnlCenter.add(getCustomPanel(getKey("Actions/Project/org-netbeans-modules-project-ui-logical-tab-action.instance"), true), constraints);
+//            pnlCenter.add(getCustomPanel(getKey("Menu/Window/org-netbeans-modules-project-ui-physical-tab-action.instance"), true), constraints);
+            
+            
+            constraints.anchor = GridBagConstraints.FIRST_LINE_END;
+            constraints.gridx = 0;
+            constraints.gridy = 4;
+            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_OpenFile"), false), constraints);
+            
+            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
+            constraints.gridx = 1;
+            constraints.gridy = 4;
+            pnlCenter.add(getCustomPanel(getKey("Actions/System/org-netbeans-modules-openfile-OpenFileAction.instance"), true), constraints);
+            
+            
+            constraints.anchor = GridBagConstraints.FIRST_LINE_END;
+            constraints.gridx = 0;
+            constraints.gridy = 5;
+            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_OpenRecentFile"), false), constraints);
+            
+            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
+            constraints.gridx = 1;
+            constraints.gridy = 5;
+            
+            
+            pnlCenter.add(getCustomPanel(getKey("Actions/System/org-netbeans-modules-openfile-RecentFileAction.instance"), true), constraints);
+            constraints.anchor = GridBagConstraints.FIRST_LINE_END;
+            constraints.gridx = 0;
+            constraints.gridy = 6;
+            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_GoToFile"), false), constraints);
+
+            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
+            constraints.gridx = 1;
+            constraints.gridy = 6;
+            pnlCenter.add(getCustomPanel(getKey("Actions/Tools/org-netbeans-modules-jumpto-file-FileSearchAction.instance"), true), constraints);
+            
+            
+            constraints.anchor = GridBagConstraints.CENTER;
+            constraints.gridwidth = 2;
+            constraints.gridx = 0;
+            constraints.gridy = 7;
+            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_DropFilesHere"), false), constraints);
+            
+            
+            constraints.anchor = GridBagConstraints.CENTER;
+            constraints.gridwidth = 2;
+            constraints.gridx = 0;
+            constraints.gridy = 8;
+            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_DropFolderHere"), false), constraints);
+        }
         
         public void setAreaComponent(Component areaComponent) {
+            if (areaComponent == null) {
+                add(this.pnlCenter, BorderLayout.CENTER);
+            }
+            
             if(this.areaComponent == areaComponent) {
                 // XXX PENDING revise how to better manipulate with components
                 // so there don't happen unneeded removals.
                 if(areaComponent != null
                 && !Arrays.asList(getComponents()).contains(areaComponent)) {
+                    remove(this.pnlCenter);
                     add(areaComponent, BorderLayout.CENTER);
                 }
                 
@@ -271,11 +443,13 @@ public class EditorView extends ViewElement {
             
             if(this.areaComponent != null) {
                 remove(this.areaComponent);
+                add(this.pnlCenter, BorderLayout.CENTER);
             }
             
             this.areaComponent = areaComponent;
             
             if(this.areaComponent != null) {
+                remove(this.pnlCenter);
                 add(this.areaComponent, BorderLayout.CENTER);
             }
         }
