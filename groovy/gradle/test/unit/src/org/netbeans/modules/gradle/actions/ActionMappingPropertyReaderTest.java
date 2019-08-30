@@ -22,10 +22,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
 import org.netbeans.modules.gradle.api.execute.ActionMapping;
@@ -49,49 +45,76 @@ public class ActionMappingPropertyReaderTest {
     @Test
     public void testLoadMappings2() {
         Properties props = new Properties();
-        props.put("nb-action.run.args", "runArgs");
+        props.put("action.run.args", "runArgs");
         Set<ActionMapping> result = ActionMappingPropertyReader.loadMappings(props);
         assertEquals(result.size(), 1);
         ActionMapping mapping = result.iterator().next();
-        assertEquals(mapping.getName(), "run");
-        assertEquals(mapping.getArgs(), "runArgs");
+        assertEquals("run", mapping.getName());
+        assertEquals("runArgs", mapping.getArgs());
         assertTrue(mapping.isRepeatable());
-        assertEquals(mapping.getReloadRule(), ActionMapping.ReloadRule.DEFAULT);
+        assertEquals(ActionMapping.ReloadRule.DEFAULT, mapping.getReloadRule());
         assertTrue(mapping.getReloadArgs().isEmpty());
     }
 
     @Test
     public void testLoadMappings3() {
         Properties props = new Properties();
-        props.put("nb-action.custom-1", "Build with Arguments");
-        props.put("nb-action.custom-1.args", "runArgs ${test}");
-        props.put("nb-action.custom-1.reload.args", "runArgs");
-        props.put("nb-action.custom-1.reload.rule", "NEVER");
-        props.put("nb-action.custom-1.repeatable", "false");
+        props.put("action.custom-1", "Build with Arguments");
+        props.put("action.custom-1.args", "runArgs ${test}");
+        props.put("action.custom-1.reload.args", "runArgs");
+        props.put("action.custom-1.reload.rule", "NEVER");
+        props.put("action.custom-1.repeatable", "false");
         Set<ActionMapping> result = ActionMappingPropertyReader.loadMappings(props);
         assertEquals(result.size(), 1);
         ActionMapping mapping = result.iterator().next();
-        assertEquals(mapping.getDisplayName(), "Build with Arguments");
-        assertEquals(mapping.getName(), "custom-1");
-        assertEquals(mapping.getArgs(), "runArgs ${test}");
+        assertEquals("Build with Arguments", mapping.getDisplayName());
+        assertEquals("custom-1", mapping.getName());
+        assertEquals("runArgs ${test}", mapping.getArgs());
         assertFalse(mapping.isRepeatable());
-        assertEquals(mapping.getReloadRule(), ActionMapping.ReloadRule.NEVER);
-        assertEquals(mapping.getReloadArgs(), "runArgs");
+        assertEquals(ActionMapping.ReloadRule.NEVER, mapping.getReloadRule());
+        assertEquals("runArgs", mapping.getReloadArgs());
     }
 
     @Test
     public void testLoadMappings4() {
         Properties props = new Properties();
-        props.put("nb-action.build.args", "build");
-        props.put("nb-action.build.priority", "100");
-        props.put("nb-action.build.plugins", "groovy, war");
+        props.put("action.build.args", "build");
+        props.put("action.build.priority", "100");
+        props.put("action.build.plugins", "groovy, war");
         Set<ActionMapping> result = ActionMappingPropertyReader.loadMappings(props);
         assertEquals(result.size(), 1);
         DefaultActionMapping mapping = (DefaultActionMapping) result.iterator().next();
-        assertEquals(mapping.getName(), "build");
-        assertEquals(mapping.priority, 100);
+        assertEquals("build", mapping.getName());
+        assertEquals(100, mapping.priority);
         assertTrue(mapping.isApplicable(new HashSet<String>(Arrays.asList("groovy", "root", "war"))));
         assertFalse(mapping.isApplicable(new HashSet<String>(Arrays.asList("groovy"))));
     }
 
+    @Test
+    public void testLoadMappings5() {
+        Properties props = new Properties();
+        props.put("action.test.single.args", "cleanTest test --tests ${selectedClass}");
+        Set<ActionMapping> result = ActionMappingPropertyReader.loadMappings(props);
+        assertEquals(result.size(), 1);
+        DefaultActionMapping mapping = (DefaultActionMapping) result.iterator().next();
+        assertEquals("test.single", mapping.getName());
+    }
+
+    @Test
+    public void testLoadMappings6() {
+        Properties props = new Properties();
+        props.put("action.download.javadoc.reload.args", "-PdownloadJavadoc={0}");
+        Set<ActionMapping> result = ActionMappingPropertyReader.loadMappings(props);
+        assertEquals(result.size(), 1);
+        DefaultActionMapping mapping = (DefaultActionMapping) result.iterator().next();
+        assertEquals("download.javadoc", mapping.getName());
+    }
+
+    @Test
+    public void testLoadMappings7() {
+        Properties props = new Properties();
+        props.put("action.download.javadoc_args", "-PdownloadJavadoc={0}");
+        Set<ActionMapping> result = ActionMappingPropertyReader.loadMappings(props);
+        assertEquals(result.size(), 0);
+    }
 }

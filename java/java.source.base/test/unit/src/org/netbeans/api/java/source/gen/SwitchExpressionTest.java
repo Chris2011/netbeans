@@ -31,7 +31,6 @@ import com.sun.source.tree.VariableTree;
 import com.sun.tools.javac.tree.JCTree;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -73,7 +72,7 @@ public class SwitchExpressionTest extends TreeRewriteTestBase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        sourceLevel = "1.12";
+        sourceLevel = "1.13";
         JavacParser.DISABLE_SOURCE_LEVEL_DOWNGRADE = true;
         EXTRA_OPTIONS.add("--enable-preview");
     }
@@ -114,7 +113,7 @@ public class SwitchExpressionTest extends TreeRewriteTestBase {
                 + "public class Test {\n"
                 + "     private void test(int p) {\n"
                 + "         var v = switch (p) {\n"
-                + "             case 1: break 1;\n"
+                + "             case 1: yield 1;\n"
                 + "             case 2 -> 2;\n"
                 + "             default -> 3;\n"
                 + "         }\n"
@@ -125,13 +124,13 @@ public class SwitchExpressionTest extends TreeRewriteTestBase {
                 + "     private void test(int p) {\n"
                 + "         var v = switch (p) {\n"
                 + "             case 1 -> {\n"
-                + "                 break 1;\n"
+                + "                 yield 1;\n"
                 + "             }\n"
                 + "             case 2 -> {\n"
-                + "                 break 2;\n"
+                + "                 yield 2;\n"
                 + "             }\n"
                 + "             default -> {\n"
-                + "                 break 3;\n"
+                + "                 yield 3;\n"
                 + "             }\n"
                 + "         }\n"
                 + "     }\n"
@@ -169,7 +168,7 @@ public class SwitchExpressionTest extends TreeRewriteTestBase {
                 Tree switchBlock = switcExpression.getInitializer();
                 List<? extends CaseTree> cases;
                 List<ExpressionTree> patterns = new ArrayList<>();
-                boolean switchExpressionFlag = switchBlock.getKind().toString().equals("SWITCH_EXPRESSION");
+                boolean switchExpressionFlag = switchBlock.getKind().toString().equals(TreeShims.SWITCH_EXPRESSION);
                 if (switchExpressionFlag) {
                     cases = TreeShims.getCases(switchBlock);
                 } else {

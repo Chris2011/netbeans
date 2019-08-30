@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.concurrent.Exchanger;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
+import javax.lang.model.SourceVersion;
 import javax.swing.JEditorPane;
 import javax.swing.SwingUtilities;
 import org.netbeans.api.java.lexer.JavaTokenId;
@@ -36,7 +37,6 @@ import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import org.openide.loaders.DataObject;
 import org.openide.loaders.DataObjectNotFoundException;
-import org.openide.util.Exceptions;
 
 /**
  *
@@ -50,7 +50,7 @@ public class ClipboardHandlerTest extends NbTestCase {
 
     @Override
     protected void setUp() throws Exception {
-        SourceUtilsTestUtil.prepareTest(new String[] {"META-INF/generated-layer.xml", "org/netbeans/modules/java/source/resources/layer.xml", "org/netbeans/modules/java/editor/resources/layer.xml"}, new Object[0]);
+        SourceUtilsTestUtil.prepareTest(new String[] {"META-INF/generated-layer.xml", "org/netbeans/modules/java/source/resources/layer.xml", "org/netbeans/modules/java/editor/resources/layer.xml", "org/netbeans/modules/editor/settings/storage/layer.xml"}, new Object[0]);
         ClipboardHandler.autoImport = true;
         super.setUp();
     }
@@ -88,6 +88,24 @@ public class ClipboardHandlerTest extends NbTestCase {
                 "package test;\n^public class Target {\n\n}", "package test;\n\nimport java.util.List;\n\n@Test.R(List.class) public class Target {\n\n}");
     }
     
+    public void testAnonymousClass() throws Exception {
+        copyAndPaste("package test;\nimport java.util.ArrayList;\npublic class Test { void t() { |new ArrayList<String>() {};| } }\n", "package test;\npublic class Target {\nvoid t() { ^ }\n}", "package test;\n\nimport java.util.ArrayList;\n\npublic class Target {\nvoid t() { new ArrayList<String>() {}; }\n}");
+    }
+    
+    public void testCopyIntoTextBlock() throws Exception {
+        copyAndPaste("|List l1;\nList l2;\nList l3;\n\n| ", "package test;\npublic class Target {\nString s = \"\"\"\n^\"\"\"\n}", "package test;\npublic class Target {\nString s = \"\"\"\nList l1;\nList l2;\nList l3;\n\n\"\"\"\n}");
+    }
+    
+    public void testCopyTextBlockIntoTextBlock() throws Exception {
+        try {
+            SourceVersion.valueOf("RELEASE_13");
+        } catch (IllegalArgumentException ex) {
+            //OK, skip test
+            return ;
+        }
+        copyAndPaste("|\"\"\"\nList l1;\"\"\"| ", "package test;\npublic class Target {\nString s = \"\"\"\ntest^ block\n\"\"\"\n}", "package test;\npublic class Target {\nString s = \"\"\"\ntest\\\"\"\"\nList l1;\\\"\"\" block\n\"\"\"\n}");
+    }
+
     private void copyAndPaste(String from, final String to, String golden) throws Exception {
         final int pastePos = to.indexOf('^');
 

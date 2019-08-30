@@ -179,8 +179,6 @@ public final class GradleDaemonExecutor extends AbstractGradleExecutor {
             }
         } finally {
             BuildExecutionSupport.registerFinishedItem(item);
-            ioput.getOut().close();
-            ioput.getErr().close();
             if (pconn != null) {
                 pconn.close();
             }
@@ -231,8 +229,8 @@ public final class GradleDaemonExecutor extends AbstractGradleExecutor {
 
         for (String arg : config.getCommandLine().getSupportedCommandLine()) {
             commandLine.append(' ');
-            if (arg.contains(" ")) { //NOI18N
-                commandLine.append('"').append(arg).append('"');
+            if (arg.contains(" ") || arg.contains("*")) { //NOI18N
+                commandLine.append('\'').append(arg).append('\'');
             } else {
                 commandLine.append(arg);
             }

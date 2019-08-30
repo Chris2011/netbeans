@@ -21,7 +21,6 @@ package org.netbeans.modules.java.source;
 import com.sun.source.tree.BreakTree;
 import com.sun.source.tree.CaseTree;
 import com.sun.source.tree.ExpressionTree;
-import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.SwitchTree;
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.tree.JCTree;
@@ -34,6 +33,9 @@ import java.util.Collections;
 import java.util.List;
 
 public class TreeShims {
+
+    public static final String SWITCH_EXPRESSION = "SWITCH_EXPRESSION"; //NOI18N
+    public static final String YIELD = "YIELD"; //NOI18N
 
     public static List<? extends ExpressionTree> getExpressions(CaseTree node) {
         try {
@@ -64,7 +66,7 @@ public class TreeShims {
             case "CASE":
                 exprTrees = getExpressions((CaseTree) node);
                 break;
-            case "SWITCH_EXPRESSION": {
+            case SWITCH_EXPRESSION: {
                 try {
                     Class swExprTreeClass = Class.forName("com.sun.source.tree.SwitchExpressionTree");
                     Method getExpressions = swExprTreeClass.getDeclaredMethod("getExpression");
@@ -110,6 +112,21 @@ public class TreeShims {
         } catch (NoSuchMethodException ex) {
             return null;
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+            throw TreeShims.<RuntimeException>throwAny(ex);
+        }
+    }
+
+    public static ExpressionTree getYieldValue(Tree node) {
+        if (!node.getKind().toString().equals(YIELD)) {
+            return null;
+        }
+        try {
+            Class yieldTreeClass = Class.forName("com.sun.source.tree.YieldTree"); //NOI18N
+            Method getExpression = yieldTreeClass.getDeclaredMethod("getValue");  //NOI18N
+            return (ExpressionTree) getExpression.invoke(node);
+        } catch (NoSuchMethodException ex) {
+            return null;
+        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | ClassNotFoundException ex) {
             throw TreeShims.<RuntimeException>throwAny(ex);
         }
     }
