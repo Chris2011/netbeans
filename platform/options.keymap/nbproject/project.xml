@@ -148,11 +148,12 @@
             </test-dependencies>
             <friend-packages>
                 <friend>org.netbeans.core.output2</friend>
+                <friend>org.netbeans.core.windows</friend>
                 <friend>org.netbeans.modules.editor.macros</friend>
+                <friend>org.netbeans.modules.editor.settings.storage</friend>
                 <friend>org.netbeans.modules.jumpto</friend>
                 <friend>org.netbeans.modules.jvi</friend>
                 <friend>org.netbeans.modules.options.editor</friend>
-                <friend>org.netbeans.modules.editor.settings.storage</friend>
                 <package>org.netbeans.core.options.keymap.api</package>
                 <package>org.netbeans.core.options.keymap.spi</package>
             </friend-packages>
