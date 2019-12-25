@@ -33,6 +33,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
 import javax.swing.border.Border;
+import org.netbeans.core.options.keymap.api.ShortcutsFinder;
 import org.netbeans.core.windows.*;
 import org.netbeans.core.windows.view.dnd.*;
 import org.openide.filesystems.FileUtil;
@@ -286,46 +287,13 @@ public class EditorView extends ViewElement {
                     || "Aqua".equals(UIManager.getLookAndFeel().getID()) ) //NOI18N
                 setOpaque( false);
         }
-        
-        private String getKeyStrokeAsText(KeyStroke keyStroke) {
-            if (keyStroke == null)
-                return "";
-            int modifiers = keyStroke.getModifiers ();
-            StringBuilder sb = new StringBuilder ();
-            if ((modifiers & InputEvent.CTRL_DOWN_MASK) > 0)
-                sb.append ("Ctrl+");
-            if ((modifiers & InputEvent.ALT_DOWN_MASK) > 0)
-                sb.append ("Alt+");
-            if ((modifiers & InputEvent.SHIFT_DOWN_MASK) > 0)
-                sb.append ("Shift+");
-            if ((modifiers & InputEvent.META_DOWN_MASK) > 0)
-                if (Utilities.isMac()) {
-                    // Mac cloverleaf symbol
-                    sb.append ("\u2318+");
-                } else if (isSolaris()) {
-                    // Sun meta symbol
-                    sb.append ("\u25C6+");
-                } else {
-                    sb.append ("Meta+");
-                }
-            if (keyStroke.getKeyCode () != KeyEvent.VK_SHIFT &&
-                keyStroke.getKeyCode () != KeyEvent.VK_CONTROL &&
-                keyStroke.getKeyCode () != KeyEvent.VK_META &&
-                keyStroke.getKeyCode () != KeyEvent.VK_ALT &&
-                keyStroke.getKeyCode () != KeyEvent.VK_ALT_GRAPH
-            )
-            sb.append (Utilities.keyToString (
-                KeyStroke.getKeyStroke (keyStroke.getKeyCode (), 0)
-            ));
 
-            return sb.toString();
-        }
-        
         private String getKey(String path) {
-            Action action = FileUtil.getConfigObject(path, Action.class);
-            
-            if (action != null && action.getValue(Action.ACCELERATOR_KEY) != null) {
-                return getKeyStrokeAsText((KeyStroke)action.getValue(Action.ACCELERATOR_KEY));
+            final ShortcutsFinder finder = Lookup.getDefault().lookup(ShortcutsFinder.class);
+            String[] shortcuts = finder.getShortcuts(finder.findActionForId(path));
+
+            if (shortcuts.length > 0) {
+                return finder.getShortcuts(finder.findActionForId(path))[0];
             }
          
             return "No shortcut assigned";
@@ -339,40 +307,27 @@ public class EditorView extends ViewElement {
             constraints.anchor = GridBagConstraints.FIRST_LINE_START;
             constraints.gridx = 0;
             constraints.gridy = 0;
-            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_NewProject"), getKey("Actions/Project/org-netbeans-modules-project-ui-NewProject.instance")), constraints);
+            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_NewProject"), getKey("org-netbeans-modules-project-ui-NewProject")), constraints);
 
             constraints.anchor = GridBagConstraints.FIRST_LINE_START;
             constraints.gridx = 0;
             constraints.gridy = 1;
-            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_OpenProject"), getKey("Actions/Project/org-netbeans-modules-project-ui-OpenProject.instance")), constraints);
+            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_OpenProject"), getKey("org-netbeans-modules-project-ui-OpenProject")), constraints);
 
             constraints.anchor = GridBagConstraints.FIRST_LINE_START;
             constraints.gridx = 0;
             constraints.gridy = 2;
-            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_QuickSearch"), getKey("Actions/Edit/org-netbeans-modules-quicksearch-QuickSearchAction.instance")), constraints);
-
-            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
-            constraints.gridx = 0;
-            constraints.gridy = 3;
-            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_ProjectsWindow"), getKey("Actions/Project/org-netbeans-modules-project-ui-ProjectTabAction-projectsPhysical.instance")), constraints);
-
-//            pnlCenter.add(getCustomPanel(getKey("Actions/Project/org-netbeans-modules-project-ui-logical-tab-action.instance"), true), constraints);
-//            pnlCenter.add(getCustomPanel(getKey("Menu/Window/org-netbeans-modules-project-ui-physical-tab-action.instance"), true), constraints);
-//            
-            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
-            constraints.gridx = 0;
-            constraints.gridy = 4;
-            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_OpenFile"), getKey("Actions/System/org-netbeans-modules-openfile-OpenFileAction.instance")), constraints);
+            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_QuickSearch"), getKey("org-netbeans-modules-quicksearch-QuickSearchAction")), constraints);
 
             constraints.anchor = GridBagConstraints.FIRST_LINE_START;
             constraints.gridx = 0;
             constraints.gridy = 5;
-            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_OpenRecentFile"), getKey("Actions/System/org-netbeans-modules-openfile-RecentFileAction.instance")), constraints);
+            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_OpenRecentFile"), getKey("org-netbeans-modules-openfile-RecentFileAction")), constraints);
 
             constraints.anchor = GridBagConstraints.FIRST_LINE_START;
             constraints.gridx = 0;
             constraints.gridy = 6;
-            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_GoToFile"), getKey("Actions/Tools/org-netbeans-modules-jumpto-file-FileSearchAction.instance")), constraints);
+            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_GoToFile"), getKey("org-netbeans-modules-jumpto-file-FileSearchAction")), constraints);
 
             constraints.anchor = GridBagConstraints.FIRST_LINE_START;
             constraints.gridwidth = 2;
