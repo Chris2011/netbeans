@@ -313,32 +313,37 @@ public class EditorView extends ViewElement {
             constraints.gridx = 0;
             constraints.gridy = 1;
             pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_OpenProject"), getKey("org-netbeans-modules-project-ui-OpenProject")), constraints);
-
+            
             constraints.anchor = GridBagConstraints.FIRST_LINE_START;
             constraints.gridx = 0;
             constraints.gridy = 2;
             pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_QuickSearch"), getKey("org-netbeans-modules-quicksearch-QuickSearchAction")), constraints);
+            
+            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
+            constraints.gridx = 0;
+            constraints.gridy = 3;
+            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_NewFile"), getKey("org-netbeans-modules-project-ui-NewFile")), constraints);
 
             constraints.anchor = GridBagConstraints.FIRST_LINE_START;
             constraints.gridx = 0;
-            constraints.gridy = 5;
+            constraints.gridy = 4;
             pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_OpenRecentFile"), getKey("org-netbeans-modules-openfile-RecentFileAction")), constraints);
 
             constraints.anchor = GridBagConstraints.FIRST_LINE_START;
             constraints.gridx = 0;
-            constraints.gridy = 6;
+            constraints.gridy = 5;
             pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_GoToFile"), getKey("org-netbeans-modules-jumpto-file-FileSearchAction")), constraints);
 
             constraints.anchor = GridBagConstraints.FIRST_LINE_START;
             constraints.gridwidth = 2;
             constraints.gridx = 0;
-            constraints.gridy = 7;
+            constraints.gridy = 6;
             pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_DropFilesHere"), ""), constraints);
             
             constraints.anchor = GridBagConstraints.FIRST_LINE_START;
             constraints.gridwidth = 2;
             constraints.gridx = 0;
-            constraints.gridy = 8;
+            constraints.gridy = 7;
             pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_DropFolderHere"), ""), constraints);
         }
         
