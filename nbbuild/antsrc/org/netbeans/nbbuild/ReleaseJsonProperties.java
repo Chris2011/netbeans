@@ -116,7 +116,8 @@ public class ReleaseJsonProperties extends Task {
         }
         // sort all information
         Collections.sort(ri);
-        // build a sorted xml 
+        // build a sorted xml
+
         for (ReleaseInfo releaseInfo : ri) {
             log(releaseInfo.toString());
             for (Object milestone : releaseInfo.milestones) {
@@ -133,6 +134,12 @@ public class ReleaseJsonProperties extends Task {
 
         if (requiredbranchinfo == null) {
             throw new BuildException("No Release Information found for branch '" + branch + "', update json file section");
+        }
+        List<String> updateValues = new ArrayList<>();
+        for (ReleaseInfo releaseInfo : ri) {
+            if (releaseInfo.position < requiredbranchinfo.position) {
+                updateValues.add(releaseInfo.version);
+            }
         }
 // populate properties for api changes
         getProject().setProperty("previous.release.year", Integer.toString(requiredbranchinfo.previousReleaseDate.getYear()));
@@ -170,7 +177,7 @@ public class ReleaseJsonProperties extends Task {
             config.write(("metabuild.PluginPortalURL=" + requiredbranchinfo.pluginsurl + "\n").getBytes());
             // used for cache and user dir
             config.write(("metabuild.RawVersion=" + requiredbranchinfo.version + optionalversion + "\n").getBytes());
-
+            config.write(("metabuild.apachepreviousversion=" + String.join(",", updateValues) + "\n").getBytes());
             if (branch.equals("master")) {
                 config.write(("metabuild.ComputedSplashVersion=DEV (Build {0})\n").getBytes());
                 config.write(("metabuild.ComputedTitleVersion=DEV {0}\n").getBytes());
@@ -184,7 +191,7 @@ public class ReleaseJsonProperties extends Task {
             throw new BuildException("Properties File for release cannot be created");
         }
 
-        log("Writing releasinfo file " + xmlFile );
+        log("Writing releasinfo file " + xmlFile);
 
         xmlFile.getParentFile().mkdirs();
         try (OutputStream config = new FileOutputStream(xmlFile)) {
@@ -378,11 +385,7 @@ public class ReleaseJsonProperties extends Task {
         }
 
         private void setVersion(String version) {
-            if (version.equals("-")) {
-                this.version = "dev";
-            } else {
-                this.version = version;
-            }
+            this.version = version;
         }
 
         private void setApidocurl(String apidocurl) {

@@ -26,6 +26,14 @@
             <code-name-base>org.netbeans.modules.gradle</code-name-base>
             <module-dependencies>
                 <dependency>
+                    <code-name-base>org.netbeans.modules.libs.gradle</code-name-base>
+                    <compile-dependency/>
+                    <run-dependency>
+                        <release-version>6</release-version>
+                        <specification-version>6.3</specification-version>
+                    </run-dependency>
+                </dependency>
+                <dependency>
                     <code-name-base>org.netbeans.api.annotations.common</code-name-base>
                     <build-prerequisite/>
                     <compile-dependency/>
@@ -331,9 +339,42 @@
                         <compile-dependency/>
                     </test-dependency>
                     <test-dependency>
+                        <code-name-base>org.netbeans.modules.apisupport.project</code-name-base>
+                        <compile-dependency/>
+                        <test/>
+                    </test-dependency>
+                    <test-dependency>
                         <code-name-base>org.netbeans.modules.nbjunit</code-name-base>
                         <recursive/>
                         <compile-dependency/>
+                    </test-dependency>
+                    <test-dependency>
+                        <code-name-base>org.netbeans.modules.projectapi.nb</code-name-base>
+                        <compile-dependency/>
+                    </test-dependency>
+                    <test-dependency>
+                        <code-name-base>org.netbeans.modules.projectui</code-name-base>
+                        <compile-dependency/>
+                    </test-dependency>
+                    <test-dependency>
+                        <code-name-base>org.openide.filesystems</code-name-base>
+                        <compile-dependency/>
+                        <test/>
+                    </test-dependency>
+                    <test-dependency>
+                        <code-name-base>org.netbeans.modules.masterfs</code-name-base>
+                        <compile-dependency/>
+                        <test/>
+                    </test-dependency>
+                    <test-dependency>
+                        <code-name-base>org.openide.util.lookup</code-name-base>
+                        <compile-dependency/>
+                        <test/>
+                    </test-dependency>
+                    <test-dependency>
+                        <code-name-base>org.openide.util.ui</code-name-base>
+                        <compile-dependency/>
+                        <test/>
                     </test-dependency>
                 </test-type>
             </test-dependencies>
@@ -344,34 +385,12 @@
                 <package>org.netbeans.modules.gradle.spi</package>
                 <package>org.netbeans.modules.gradle.spi.actions</package>
                 <package>org.netbeans.modules.gradle.spi.customizer.support</package>
-                <package>org.netbeans.modules.gradle.spi.execute</package>
                 <package>org.netbeans.modules.gradle.spi.newproject</package>
                 <package>org.netbeans.modules.gradle.spi.nodes</package>
-                <package>org.gradle.tooling</package>
-                <package>org.gradle.tooling.events</package>
-                <package>org.gradle.tooling.events.test</package>
-                <package>org.gradle.tooling.exceptions</package>
-                <package>org.gradle.tooling.model</package>
-                <package>org.gradle.tooling.model.build</package>
-                <package>org.gradle.tooling.model.eclipse</package>
-                <package>org.gradle.tooling.model.gradle</package>
-                <package>org.gradle.tooling.model.idea</package>
             </public-packages>
-            <class-path-extension>
-                <runtime-relative-path>gradle/slf4j-jdk14.jar</runtime-relative-path>
-                <binary-origin>external/slf4j-jdk14-1.7.25.jar</binary-origin>
-            </class-path-extension>
             <class-path-extension>
                 <runtime-relative-path>gradle/netbeans-gradle-tooling.jar</runtime-relative-path>
                 <binary-origin>build/tooling/netbeans-gradle-tooling.jar</binary-origin>
-            </class-path-extension>
-            <class-path-extension>
-                <runtime-relative-path>gradle/gradle-tooling-api.jar</runtime-relative-path>
-                <binary-origin>external/gradle-tooling-api-4.10.2.jar</binary-origin>
-            </class-path-extension>
-            <class-path-extension>
-                <runtime-relative-path>gradle/slf4j-api.jar</runtime-relative-path>
-                <binary-origin>external/slf4j-api-1.7.25.jar</binary-origin>
             </class-path-extension>
         </data>
     </configuration>

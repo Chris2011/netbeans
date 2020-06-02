@@ -40,7 +40,7 @@ import org.openide.util.NbBundle.Messages;
  *
  * @author Laszlo Kishalmi
  */
-@TemplateRegistration(folder="Project/Gradle", position=200, displayName="#template.webAppProject", iconBase="org/netbeans/modules/gradle/javaee/resources/webProjectIcon.png", description="WebApplicationDescription.html")
+@TemplateRegistration(folder="Project/Gradle", position=200, displayName="#template.webAppProject", iconBase="org/netbeans/modules/gradle/javaee/resources/javaeeProjectIcon.png", description="WebApplicationDescription.html")
 @Messages("template.webAppProject=Web Application")
 public class WebApplicationProjectWizard extends SimpleGradleWizardIterator {
 
@@ -85,7 +85,7 @@ public class WebApplicationProjectWizard extends SimpleGradleWizardIterator {
         List<String> dependencies = new LinkedList<>();
         dependencies.addAll(webDependencies(profileId));
         dependencies.add("");
-        dependencies.add("testCompile     'junit:junit:4.12'");
+        dependencies.add("testImplementation     'junit:junit:4.13'");
         params.put(PROP_DEPENDENCIES, dependencies);
 
         String projectName = (String) params.get(PROP_NAME);

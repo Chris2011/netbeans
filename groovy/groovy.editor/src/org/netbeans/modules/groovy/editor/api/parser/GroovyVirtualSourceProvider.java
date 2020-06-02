@@ -392,8 +392,8 @@ public class GroovyVirtualSourceProvider implements VirtualSourceProvider {
             }
             boolean first = true;
             
-            for (Iterator iterator = fields.iterator(); iterator.hasNext();) {
-                FieldNode fieldNode = (FieldNode) iterator.next();
+            for (Iterator<FieldNode> iterator = fields.iterator(); iterator.hasNext();) {
+                FieldNode fieldNode = iterator.next();
                 if (!first) {
                     out.print(", ");
                 } else {
@@ -433,7 +433,7 @@ public class GroovyVirtualSourceProvider implements VirtualSourceProvider {
             if (stats == null || stats.isEmpty()) {
                 return null;
             }
-            Statement stat = (Statement) stats.get(0);
+            Statement stat = stats.get(0);
             if (!(stat instanceof ExpressionStatement)) {
                 return null;
             }

@@ -150,7 +150,6 @@ import org.netbeans.modules.java.hints.providers.spi.ClassPathBasedHintProvider;
 import org.netbeans.modules.java.hints.providers.spi.HintDescription;
 import org.netbeans.modules.java.hints.providers.spi.Trigger.PatternDescription;
 import org.netbeans.modules.java.hints.spiimpl.JackpotTrees.CatchWildcard;
-import org.netbeans.modules.java.hints.spiimpl.JackpotTrees.VariableWildcard;
 import org.netbeans.modules.java.source.JavaSourceAccessor;
 import org.netbeans.modules.java.source.builder.TreeFactory;
 import org.netbeans.lib.nbjavac.services.CancelService;
@@ -194,7 +193,7 @@ public class Utilities {
     private static final String SWITCH_EXPRESSION = "SWITCH_EXPRESSION";
     
 
-    public static <E> Iterable<E> checkedIterableByFilter(final Iterable raw, final Class<E> type, final boolean strict) {
+    public static <E> Iterable<E> checkedIterableByFilter(final Iterable<?> raw, final Class<E> type, final boolean strict) {
         return new Iterable<E>() {
             public Iterator<E> iterator() {
                 return NbCollections.checkedIteratorByFilter(raw.iterator(), type, strict);
@@ -1363,7 +1362,7 @@ public class Utilities {
 
                     if (peeked.kind == TokenKind.COMMA || peeked.kind == TokenKind.RPAREN) {
                         nextToken();
-                        return new VariableWildcard(ctx, name, F.Ident(name));
+                        return JackpotTrees.createVariableWildcard(ctx, name);
                     }
                 }
             }
@@ -1381,7 +1380,7 @@ public class Utilities {
 
                     if (peeked.kind == TokenKind.COMMA || peeked.kind == TokenKind.RPAREN) {
                         nextToken();
-                        return new VariableWildcard(ctx, name, F.Ident(name));
+                        return JackpotTrees.createVariableWildcard(ctx, name);
                     }
                 }
             }

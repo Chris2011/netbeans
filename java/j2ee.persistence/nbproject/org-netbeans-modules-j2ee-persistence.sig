@@ -1,5 +1,5 @@
 #Signature file v4.1
-#Version 1.59.0
+#Version 1.61.0
 
 CLSS public abstract java.awt.Component
 cons protected init()
@@ -464,7 +464,7 @@ meth public void setClassAssertionStatus(java.lang.String,boolean)
 meth public void setDefaultAssertionStatus(boolean)
 meth public void setPackageAssertionStatus(java.lang.String,boolean)
 supr java.lang.Object
-hfds assertionLock,classAssertionStatus,classes,defaultAssertionStatus,defaultDomain,domains,loadedLibraryNames,nativeLibraries,nativeLibraryContext,nocerts,package2certs,packageAssertionStatus,packages,parallelLockMap,parent,scl,sclSet,sys_paths,systemNativeLibraries,usr_paths
+hfds assertionLock,classAssertionStatus,classes,defaultAssertionStatus,defaultDomain,loadedLibraryNames,nativeLibraries,nativeLibraryContext,nocerts,package2certs,packageAssertionStatus,packages,parallelLockMap,parent,scl,sclSet,sys_paths,systemNativeLibraries,usr_paths
 hcls NativeLibrary,ParallelLoaders
 
 CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
@@ -3038,6 +3038,7 @@ meth protected void addRefreshable(org.netbeans.modules.xml.multiview.Refreshabl
 meth protected void endUIChange()
 meth protected void scheduleRefreshView()
 meth protected void signalUIChange()
+ anno 0 java.lang.Deprecated()
 meth protected void startUIChange()
 meth public abstract void setValue(javax.swing.JComponent,java.lang.Object)
 meth public boolean canClose()

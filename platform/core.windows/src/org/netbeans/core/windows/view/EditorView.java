@@ -288,6 +288,18 @@ public class EditorView extends ViewElement {
                 setOpaque( false);
         }
 
+        @Override
+        public void updateUI() {
+            super.updateUI();
+
+            Color background = UIManager.getColor("Nb.EmptyEditorArea.background");
+            if (background == null) {
+                // restore to default (on LaF switch)
+                background = UIManager.getColor("Panel.background");
+            }
+            setBackground(background);
+        }
+
         private String getKey(String path) {
             final ShortcutsFinder finder = Lookup.getDefault().lookup(ShortcutsFinder.class);
             String[] shortcuts = finder.getShortcuts(finder.findActionForId(path));
@@ -375,6 +387,8 @@ public class EditorView extends ViewElement {
                 remove(this.pnlCenter);
                 add(this.areaComponent, BorderLayout.CENTER);
             }
+
+            repaint();
         }
         
         @Override
@@ -493,4 +507,3 @@ public class EditorView extends ViewElement {
     
     
 }
-

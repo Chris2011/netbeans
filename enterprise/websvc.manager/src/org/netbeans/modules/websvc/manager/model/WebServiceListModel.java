@@ -231,15 +231,15 @@ public class WebServiceListModel {
              * it and the set is modified.
              * - David Botterill 5/6/2004.
              */
-            String[] webserviceIds = (String[]) getWebServiceGroup(groupId).getWebServiceIds().toArray(new String[0]);
+            String[] webserviceIds = getWebServiceGroup(groupId).getWebServiceIds().toArray(new String[0]);
             for (int ii = 0; null != webserviceIds && ii < webserviceIds.length; ii++) {
                 WebServiceManager.getInstance().removeWebService(getWebService(webserviceIds[ii]));
             }
             webServiceGroups.remove(group);
-            Iterator iter = listeners.iterator();
+            Iterator<WebServiceListModelListener> iter = listeners.iterator();
             while (iter.hasNext()) {
                 WebServiceListModelEvent evt = new WebServiceListModelEvent(groupId);
-                ((WebServiceListModelListener) iter.next()).webServiceGroupRemoved(evt);
+                iter.next().webServiceGroupRemoved(evt);
             }
         }
     }

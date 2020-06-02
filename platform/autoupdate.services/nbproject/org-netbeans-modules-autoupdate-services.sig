@@ -1,5 +1,5 @@
 #Signature file v4.1
-#Version 1.58
+#Version 1.62
 
 CLSS public abstract interface java.io.Serializable
 
@@ -81,6 +81,7 @@ meth public boolean isTrusted(org.netbeans.api.autoupdate.InstallSupport$Install
 meth public java.lang.String getCertificate(org.netbeans.api.autoupdate.InstallSupport$Installer,org.netbeans.api.autoupdate.UpdateElement)
 meth public org.netbeans.api.autoupdate.InstallSupport$Installer doValidate(org.netbeans.api.autoupdate.InstallSupport$Validator,org.netbeans.api.progress.ProgressHandle) throws org.netbeans.api.autoupdate.OperationException
 meth public org.netbeans.api.autoupdate.InstallSupport$Validator doDownload(org.netbeans.api.progress.ProgressHandle,boolean) throws org.netbeans.api.autoupdate.OperationException
+ anno 0 java.lang.Deprecated()
 meth public org.netbeans.api.autoupdate.InstallSupport$Validator doDownload(org.netbeans.api.progress.ProgressHandle,java.lang.Boolean,boolean) throws org.netbeans.api.autoupdate.OperationException
 meth public org.netbeans.api.autoupdate.OperationContainer<org.netbeans.api.autoupdate.InstallSupport> getContainer()
 meth public org.netbeans.api.autoupdate.OperationSupport$Restarter doInstall(org.netbeans.api.autoupdate.InstallSupport$Installer,org.netbeans.api.progress.ProgressHandle) throws org.netbeans.api.autoupdate.OperationException
@@ -243,6 +244,7 @@ CLSS public final org.netbeans.api.autoupdate.UpdateUnitProvider
 innr public final static !enum CATEGORY
 meth public !varargs java.util.List<org.netbeans.api.autoupdate.UpdateUnit> getUpdateUnits(org.netbeans.api.autoupdate.UpdateManager$TYPE[])
 meth public boolean isEnabled()
+meth public boolean isTrusted()
 meth public boolean refresh(org.netbeans.api.progress.ProgressHandle,boolean) throws java.io.IOException
 meth public java.awt.Image getSourceIcon()
 meth public java.lang.String getContentDescription()
@@ -258,6 +260,7 @@ meth public org.netbeans.api.autoupdate.UpdateUnitProvider$CATEGORY getCategory(
 meth public void setDisplayName(java.lang.String)
 meth public void setEnable(boolean)
 meth public void setProviderURL(java.net.URL)
+meth public void setTrusted(boolean)
 supr java.lang.Object
 hfds impl
 
@@ -295,7 +298,19 @@ CLSS public abstract interface org.netbeans.spi.autoupdate.CustomUninstaller
 meth public abstract boolean uninstall(java.lang.String,java.lang.String,org.netbeans.api.progress.ProgressHandle) throws org.netbeans.api.autoupdate.OperationException
 
 CLSS public abstract interface org.netbeans.spi.autoupdate.KeyStoreProvider
+innr public final static !enum TrustLevel
 meth public abstract java.security.KeyStore getKeyStore()
+meth public org.netbeans.spi.autoupdate.KeyStoreProvider$TrustLevel getTrustLevel()
+
+CLSS public final static !enum org.netbeans.spi.autoupdate.KeyStoreProvider$TrustLevel
+ outer org.netbeans.spi.autoupdate.KeyStoreProvider
+fld public final static org.netbeans.spi.autoupdate.KeyStoreProvider$TrustLevel TRUST
+fld public final static org.netbeans.spi.autoupdate.KeyStoreProvider$TrustLevel TRUST_CA
+fld public final static org.netbeans.spi.autoupdate.KeyStoreProvider$TrustLevel VALIDATE
+fld public final static org.netbeans.spi.autoupdate.KeyStoreProvider$TrustLevel VALIDATE_CA
+meth public static org.netbeans.spi.autoupdate.KeyStoreProvider$TrustLevel valueOf(java.lang.String)
+meth public static org.netbeans.spi.autoupdate.KeyStoreProvider$TrustLevel[] values()
+supr java.lang.Enum<org.netbeans.spi.autoupdate.KeyStoreProvider$TrustLevel>
 
 CLSS public final org.netbeans.spi.autoupdate.UpdateItem
 meth public static org.netbeans.spi.autoupdate.UpdateItem createFeature(java.lang.String,java.lang.String,java.util.Set<java.lang.String>,java.lang.String,java.lang.String,java.lang.String)
