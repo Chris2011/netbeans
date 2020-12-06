@@ -28,6 +28,9 @@ import java.awt.dnd.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,6 +39,10 @@ import javax.swing.border.Border;
 import org.netbeans.core.options.keymap.api.ShortcutsFinder;
 import org.netbeans.core.windows.*;
 import org.netbeans.core.windows.view.dnd.*;
+import org.openide.filesystems.FileAttributeEvent;
+import org.openide.filesystems.FileChangeAdapter;
+import org.openide.filesystems.FileChangeListener;
+import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
 import org.openide.util.*;
 import org.openide.windows.*;
@@ -311,52 +318,76 @@ public class EditorView extends ViewElement {
             return "No shortcut assigned";
         }
 
-        private void showCommonShortcuts() throws MissingResourceException {
-            this.pnlCenter = new JPanel(new GridBagLayout());
-            
-            GridBagConstraints constraints = new GridBagConstraints(); 
-            
-            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
-            constraints.gridx = 0;
-            constraints.gridy = 0;
-            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_NewProject"), getKey("org-netbeans-modules-project-ui-NewProject")), constraints);
+        private FileChangeListener keymapListener;
+        private final Map<String, String> shortCuts = new HashMap<>();
 
-            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
-            constraints.gridx = 0;
-            constraints.gridy = 1;
-            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_OpenProject"), getKey("org-netbeans-modules-project-ui-OpenProject")), constraints);
+        private void drawShortcutPanels() {
+            shortCuts.clear();
             
-            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
-            constraints.gridx = 0;
-            constraints.gridy = 2;
-            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_QuickSearch"), getKey("org-netbeans-modules-quicksearch-QuickSearchAction")), constraints);
+            shortCuts.put("LBL_NewProject", "org-netbeans-modules-project-ui-NewProject");
+            shortCuts.put("LBL_OpenProject", "org-netbeans-modules-project-ui-OpenProject");
+            shortCuts.put("LBL_QuickSearch", "org-netbeans-modules-quicksearch-QuickSearchAction");
+            shortCuts.put("LBL_NewFile", "org-netbeans-modules-project-ui-NewFile");
+            shortCuts.put("LBL_OpenRecentFile", "org-netbeans-modules-openfile-RecentFileAction");
+            shortCuts.put("LBL_GoToFile", "org-netbeans-modules-jumpto-file-FileSearchAction");
+
+            GridBagConstraints constraints = new GridBagConstraints();
+            int counter = 0;
             
-            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
-            constraints.gridx = 0;
-            constraints.gridy = 3;
-            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_NewFile"), getKey("org-netbeans-modules-project-ui-NewFile")), constraints);
+            for (Map.Entry<String, String> en : shortCuts.entrySet()) {
+                constraints.anchor = GridBagConstraints.FIRST_LINE_START;
+                constraints.gridx = 0;
+                constraints.gridy = counter++;
 
-            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
-            constraints.gridx = 0;
-            constraints.gridy = 4;
-            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_OpenRecentFile"), getKey("org-netbeans-modules-openfile-RecentFileAction")), constraints);
-
-            constraints.anchor = GridBagConstraints.FIRST_LINE_START;
-            constraints.gridx = 0;
-            constraints.gridy = 5;
-            pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_GoToFile"), getKey("org-netbeans-modules-jumpto-file-FileSearchAction")), constraints);
+                pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, en.getKey()), getKey(en.getValue())), constraints);
+            }
 
             constraints.anchor = GridBagConstraints.FIRST_LINE_START;
             constraints.gridwidth = 2;
             constraints.gridx = 0;
             constraints.gridy = 6;
+
             pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_DropFilesHere"), ""), constraints);
             
             constraints.anchor = GridBagConstraints.FIRST_LINE_START;
             constraints.gridwidth = 2;
             constraints.gridx = 0;
             constraints.gridy = 7;
+
             pnlCenter.add(getCustomPanel(NbBundle.getMessage(EditorView.class, "LBL_DropFolderHere"), ""), constraints);
+        }
+        private void showCommonShortcuts() throws MissingResourceException {
+            this.pnlCenter = new JPanel(new GridBagLayout());
+
+            drawShortcutPanels();
+
+            FileObject keymaps = FileUtil.getConfigFile("Keymaps"); // NOI18N
+            if (keymaps != null) {
+                String curr = (String) keymaps.getAttribute("currentKeymap"); // NOI18N
+
+                if (curr == null) {
+                    curr = "NetBeans"; // NOI18N
+                }
+                
+                Enumeration<String> attributes = keymaps.getFileObject(curr).getAttributes();
+                
+                for (; attributes.hasMoreElements();) {
+                    String nextElement = attributes.nextElement();
+                    
+                    JOptionPane.showMessageDialog(null, nextElement);
+                }
+
+//                JOptionPane.showMessageDialog(null, FileUtil.toFile(keymaps.getFileObject(curr)));
+//                keymaps.getFileObject(curr).addFileChangeListener(new FileChangeAdapter() {
+                keymaps.addFileChangeListener(new FileChangeAdapter() {
+                    public @Override void fileAttributeChanged(FileAttributeEvent fe) {
+                        JOptionPane.showMessageDialog(null, fe);
+                        remove(pnlCenter);
+                        drawShortcutPanels();
+                        add(pnlCenter);
+                    }
+                });
+            }
         }
         
         public void setAreaComponent(Component areaComponent) {
