@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
-import junit.framework.Assert;
+import org.junit.Assert;
 
 /**
  * Utilities useful to those testing JSR 269 annotation processors.
@@ -121,7 +121,7 @@ public class AnnotationProcessorTestUtils {
         args.add(destG.getAbsolutePath());
         args.add("-source");
         if (source == null) {
-            args.add("6");
+            args.add("8");
         } else {
             args.add(source);
         }

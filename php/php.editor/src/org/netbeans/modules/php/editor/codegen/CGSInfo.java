@@ -60,7 +60,9 @@ import org.netbeans.modules.php.editor.parser.astnodes.BodyDeclaration;
 import org.netbeans.modules.php.editor.parser.astnodes.ClassDeclaration;
 import org.netbeans.modules.php.editor.parser.astnodes.Comment;
 import org.netbeans.modules.php.editor.parser.astnodes.FieldsDeclaration;
+import org.netbeans.modules.php.editor.parser.astnodes.FormalParameter;
 import org.netbeans.modules.php.editor.parser.astnodes.Identifier;
+import org.netbeans.modules.php.editor.parser.astnodes.IntersectionType;
 import org.netbeans.modules.php.editor.parser.astnodes.MethodDeclaration;
 import org.netbeans.modules.php.editor.parser.astnodes.NullableType;
 import org.netbeans.modules.php.editor.parser.astnodes.PHPDocBlock;
@@ -364,6 +366,9 @@ public final class CGSInfo {
                 // PHP 7.4 or newer
                 if (fieldsDeclaration.getFieldType() instanceof UnionType) {
                     type = VariousUtils.getUnionType((UnionType) fieldsDeclaration.getFieldType());
+                } else if (fieldsDeclaration.getFieldType() instanceof IntersectionType) {
+                    // NETBEANS-5599 PHP 8.1 Pure intersection types
+                    type = VariousUtils.getIntersectionType((IntersectionType) fieldsDeclaration.getFieldType());
                 } else {
                     QualifiedName qualifiedName = QualifiedName.create(fieldsDeclaration.getFieldType());
                     if (qualifiedName != null) {
@@ -441,6 +446,15 @@ public final class CGSInfo {
         public void visit(MethodDeclaration node) {
             String name = node.getFunction().getFunctionName().getName();
             String possibleProperty;
+            if (CodeUtils.isConstructor(node)) {
+                // [NETBEANS-4443] PHP 8.0 Constructor Property Promotion
+                for (FormalParameter parameter : node.getFunction().getFormalParameters()) {
+                    FieldsDeclaration fieldsDeclaration = FieldsDeclaration.create(parameter);
+                    if (fieldsDeclaration != null) {
+                        scan(fieldsDeclaration);
+                    }
+                }
+            }
             if (name != null) {
                 if (name.startsWith(CGSGenerator.START_OF_GETTER)) {
                     possibleProperty = name.substring(CGSGenerator.START_OF_GETTER.length());

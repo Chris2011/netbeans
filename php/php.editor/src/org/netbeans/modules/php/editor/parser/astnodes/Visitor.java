@@ -42,6 +42,10 @@ public interface Visitor {
 
     public void visit(ASTErrorExpression astErrorExpression);
 
+    public void visit(Attribute attribute);
+
+    public void visit(AttributeDeclaration attributeDeclaration);
+
     //public void endVisit(ASTError astError);
     public void visit(BackTickExpression backTickExpression);
 
@@ -50,6 +54,8 @@ public interface Visitor {
 
     //public void endVisit(Block block);
     public void visit(BreakStatement breakStatement);
+
+    public void visit(CaseDeclaration caseDeclaration);
 
     //public void endVisit(BreakStatement breakStatement);
     public void visit(CastExpression castExpression);
@@ -95,6 +101,8 @@ public interface Visitor {
     //public void endVisit(EchoStatement echoStatement);
     public void visit(EmptyStatement emptyStatement);
 
+    public void visit(EnumDeclaration enumDeclaration);
+
     public void visit(ExpressionArrayAccess node);
 
     //public void endVisit(EmptyStatement emptyStatement);
@@ -107,6 +115,8 @@ public interface Visitor {
     public void visit(FieldsDeclaration fieldsDeclaration);
 
     public void visit(FinallyClause finallyClause);
+
+    public void visit(FirstClassCallableArg firstClassCallableArg);
 
     //public void endVisit(FieldsDeclaration fieldsDeclaration);
     public void visit(ForEachStatement forEachStatement);
@@ -135,6 +145,8 @@ public interface Visitor {
     public void visit(MatchArm matchArm);
 
     public void visit(MatchExpression matchExpression);
+
+    public void visit(NamedArgument namedArgument);
 
     //public void endVisit(Identifier identifier);
     public void visit(NamespaceName namespaceName);
@@ -174,6 +186,8 @@ public interface Visitor {
 
     //public void endVisit(InstanceOfExpression instanceOfExpression);
     public void visit(InterfaceDeclaration interfaceDeclaration);
+
+    public void visit(IntersectionType intersectionType);
 
     //public void endVisit(InterfaceDeclaration interfaceDeclaration);
     public void visit(ListVariable listVariable);

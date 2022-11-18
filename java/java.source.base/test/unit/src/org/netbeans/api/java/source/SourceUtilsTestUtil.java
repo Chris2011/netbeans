@@ -31,12 +31,13 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.swing.event.ChangeListener;
 import javax.swing.text.Document;
-import junit.framework.Assert;
+import org.junit.Assert;
 import org.netbeans.api.editor.mimelookup.MimePath;
 import org.netbeans.api.java.classpath.ClassPath;
 import org.netbeans.api.java.classpath.JavaClassPathConstants;
 import org.netbeans.api.java.queries.SourceForBinaryQuery;
 import org.netbeans.api.java.source.JavaSource.Phase;
+import org.netbeans.core.startup.Main;
 import org.netbeans.editor.BaseDocument;
 import org.netbeans.junit.NbTestCase;
 import org.netbeans.modules.java.JavaDataLoader;
@@ -169,6 +170,7 @@ public final class SourceUtilsTestUtil extends ProxyLookup {
         amt.add("text/x-java");
         MimeTypes.setAllMimeTypes(amt);
         org.netbeans.api.project.ui.OpenProjects.getDefault().getOpenProjects();
+        Main.initializeURLFactory();
 
         TestUtil.setupEditorMockServices();
     }

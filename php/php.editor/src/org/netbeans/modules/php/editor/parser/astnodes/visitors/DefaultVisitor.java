@@ -28,9 +28,12 @@ import org.netbeans.modules.php.editor.parser.astnodes.ArrayDimension;
 import org.netbeans.modules.php.editor.parser.astnodes.ArrayElement;
 import org.netbeans.modules.php.editor.parser.astnodes.ArrowFunctionDeclaration;
 import org.netbeans.modules.php.editor.parser.astnodes.Assignment;
+import org.netbeans.modules.php.editor.parser.astnodes.Attribute;
+import org.netbeans.modules.php.editor.parser.astnodes.AttributeDeclaration;
 import org.netbeans.modules.php.editor.parser.astnodes.BackTickExpression;
 import org.netbeans.modules.php.editor.parser.astnodes.Block;
 import org.netbeans.modules.php.editor.parser.astnodes.BreakStatement;
+import org.netbeans.modules.php.editor.parser.astnodes.CaseDeclaration;
 import org.netbeans.modules.php.editor.parser.astnodes.CastExpression;
 import org.netbeans.modules.php.editor.parser.astnodes.CatchClause;
 import org.netbeans.modules.php.editor.parser.astnodes.ClassDeclaration;
@@ -47,11 +50,13 @@ import org.netbeans.modules.php.editor.parser.astnodes.DereferencedArrayAccess;
 import org.netbeans.modules.php.editor.parser.astnodes.DoStatement;
 import org.netbeans.modules.php.editor.parser.astnodes.EchoStatement;
 import org.netbeans.modules.php.editor.parser.astnodes.EmptyStatement;
+import org.netbeans.modules.php.editor.parser.astnodes.EnumDeclaration;
 import org.netbeans.modules.php.editor.parser.astnodes.ExpressionArrayAccess;
 import org.netbeans.modules.php.editor.parser.astnodes.ExpressionStatement;
 import org.netbeans.modules.php.editor.parser.astnodes.FieldAccess;
 import org.netbeans.modules.php.editor.parser.astnodes.FieldsDeclaration;
 import org.netbeans.modules.php.editor.parser.astnodes.FinallyClause;
+import org.netbeans.modules.php.editor.parser.astnodes.FirstClassCallableArg;
 import org.netbeans.modules.php.editor.parser.astnodes.ForEachStatement;
 import org.netbeans.modules.php.editor.parser.astnodes.ForStatement;
 import org.netbeans.modules.php.editor.parser.astnodes.FormalParameter;
@@ -71,12 +76,14 @@ import org.netbeans.modules.php.editor.parser.astnodes.Include;
 import org.netbeans.modules.php.editor.parser.astnodes.InfixExpression;
 import org.netbeans.modules.php.editor.parser.astnodes.InstanceOfExpression;
 import org.netbeans.modules.php.editor.parser.astnodes.InterfaceDeclaration;
+import org.netbeans.modules.php.editor.parser.astnodes.IntersectionType;
 import org.netbeans.modules.php.editor.parser.astnodes.LambdaFunctionDeclaration;
 import org.netbeans.modules.php.editor.parser.astnodes.ListVariable;
 import org.netbeans.modules.php.editor.parser.astnodes.MatchArm;
 import org.netbeans.modules.php.editor.parser.astnodes.MatchExpression;
 import org.netbeans.modules.php.editor.parser.astnodes.MethodDeclaration;
 import org.netbeans.modules.php.editor.parser.astnodes.MethodInvocation;
+import org.netbeans.modules.php.editor.parser.astnodes.NamedArgument;
 import org.netbeans.modules.php.editor.parser.astnodes.NamespaceDeclaration;
 import org.netbeans.modules.php.editor.parser.astnodes.NamespaceName;
 import org.netbeans.modules.php.editor.parser.astnodes.NullableType;
@@ -163,6 +170,7 @@ public class DefaultVisitor implements Visitor {
 
     @Override
     public void visit(ArrowFunctionDeclaration node) {
+        scan(node.getAttributes());
         scan(node.getFormalParameters());
         scan(node.getReturnType());
         scan(node.getExpression());
@@ -183,6 +191,17 @@ public class DefaultVisitor implements Visitor {
     }
 
     @Override
+    public void visit(Attribute attribute) {
+        scan(attribute.getAttributeDeclarations());
+    }
+
+    @Override
+    public void visit(AttributeDeclaration attributeDeclaration) {
+        scan(attributeDeclaration.getAttributeName());
+        scan(attributeDeclaration.getParameters());
+    }
+
+    @Override
     public void visit(BackTickExpression node) {
         scan(node.getExpressions());
     }
@@ -195,6 +214,13 @@ public class DefaultVisitor implements Visitor {
     @Override
     public void visit(BreakStatement node) {
         scan(node.getExpression());
+    }
+
+    @Override
+    public void visit(CaseDeclaration node) {
+        scan(node.getAttributes());
+        scan(node.getName());
+        scan(node.getInitializer());
     }
 
     @Override
@@ -211,12 +237,14 @@ public class DefaultVisitor implements Visitor {
 
     @Override
     public void visit(ConstantDeclaration node) {
+        scan(node.getAttributes());
         scan(node.getNames());
         scan(node.getInitializers());
     }
 
     @Override
     public void visit(ClassDeclaration node) {
+        scan(node.getAttributes());
         scan(node.getName());
         scan(node.getSuperClass());
         scan(node.getInterfaes());
@@ -225,6 +253,7 @@ public class DefaultVisitor implements Visitor {
 
     @Override
     public void visit(ClassInstanceCreation node) {
+        scan(node.getAttributes());
         scan(node.getClassName());
         scan(node.ctorParams());
         scan(node.getSuperClass());
@@ -286,6 +315,15 @@ public class DefaultVisitor implements Visitor {
     }
 
     @Override
+    public void visit(EnumDeclaration node) {
+        scan(node.getAttributes());
+        scan(node.getName());
+        scan(node.getBackingType());
+        scan(node.getInterfaes());
+        scan(node.getBody());
+    }
+
+    @Override
     public void visit(ExpressionArrayAccess node) {
         scan(node.getExpression());
         scan(node.getDimension());
@@ -304,6 +342,7 @@ public class DefaultVisitor implements Visitor {
 
     @Override
     public void visit(FieldsDeclaration node) {
+        scan(node.getAttributes());
         scan(node.getFieldType());
         scan(node.getFields());
     }
@@ -311,6 +350,11 @@ public class DefaultVisitor implements Visitor {
     @Override
     public void visit(FinallyClause node) {
         scan(node.getBody());
+    }
+
+    @Override
+    public void visit(FirstClassCallableArg firstClassCallableArg) {
+        // noop
     }
 
     @Override
@@ -323,6 +367,7 @@ public class DefaultVisitor implements Visitor {
 
     @Override
     public void visit(FormalParameter node) {
+        scan(node.getAttributes());
         scan(node.getParameterType());
         scan(node.getParameterName());
         scan(node.getDefaultValue());
@@ -338,6 +383,7 @@ public class DefaultVisitor implements Visitor {
 
     @Override
     public void visit(FunctionDeclaration node) {
+        scan(node.getAttributes());
         scan(node.getFunctionName());
         scan(node.getFormalParameters());
         scan(node.getReturnType());
@@ -399,9 +445,15 @@ public class DefaultVisitor implements Visitor {
 
     @Override
     public void visit(InterfaceDeclaration node) {
+        scan(node.getAttributes());
         scan(node.getName());
         scan(node.getInterfaes());
         scan(node.getBody());
+    }
+
+    @Override
+    public void visit(IntersectionType node) {
+        scan(node.getTypes());
     }
 
     @Override
@@ -423,6 +475,7 @@ public class DefaultVisitor implements Visitor {
 
     @Override
     public void visit(MethodDeclaration node) {
+        scan(node.getAttributes());
         scan(node.getFunction());
     }
 
@@ -430,6 +483,12 @@ public class DefaultVisitor implements Visitor {
     public void visit(MethodInvocation node) {
         scan(node.getDispatcher());
         scan(node.getMethod());
+    }
+
+    @Override
+    public void visit(NamedArgument node) {
+        scan(node.getParameterName());
+        scan(node.getExpression());
     }
 
     @Override
@@ -633,6 +692,7 @@ public class DefaultVisitor implements Visitor {
 
     @Override
     public void visit(LambdaFunctionDeclaration declaration) {
+        scan(declaration.getAttributes());
         scan(declaration.getFormalParameters());
         scan(declaration.getLexicalVariables());
         scan(declaration.getReturnType());
@@ -658,6 +718,7 @@ public class DefaultVisitor implements Visitor {
 
     @Override
     public void visit(TraitDeclaration traitDeclaration) {
+        scan(traitDeclaration.getAttributes());
         scan(traitDeclaration.getName());
         scan(traitDeclaration.getBody());
     }

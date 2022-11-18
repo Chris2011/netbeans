@@ -139,9 +139,10 @@ public final class Util {
                 sampleName = packageName + '.' + sampleName;
             }
         }
+        Class<?> sampleClass = null;
         if (sampleName != null) {
             try {
-                cl.loadClass(sampleName);
+                sampleClass = cl.loadClass(sampleName);
             } catch (ClassNotFoundException cnfe) {
                 if (packageName == null) {
                     // This was all we were relying on, so it is an error.
@@ -169,6 +170,9 @@ public final class Util {
                 pkg = ((ProxyClassLoader) cl).getPackage(packageName);
             } else {
                 pkg = Package.getPackage(packageName);
+            }
+            if (pkg == null && sampleClass != null) {
+                pkg = sampleClass.getPackage();
             }
             if (pkg == null) {
                 err.fine("No package with the name " + packageName + " found");
@@ -257,7 +261,7 @@ public final class Util {
             for (Dependency dep : m1.getDependenciesArray()) {
                 if (dep.getType() == Dependency.TYPE_REQUIRES) {
                     List<Module> providers = providersOf.get(dep.getName());
-
+                    
                     if (providers != null) {
                         l = fillMapSlot(m, m1);
                         l.addAll(providers);
@@ -280,9 +284,10 @@ public final class Util {
             if (frags != null && !frags.isEmpty()) {
                 frags = new HashSet<>(frags);
                 frags.retainAll(modules);
-            
+                
                 for (Module f : frags) {
                     List<Module> fragmentDep = fillMapSlot(m, f);
+                    // move fragment after its host module in the sort order
                     fragmentDep.add(m1);
                     for (Dependency dep : f.getDependenciesArray()) {
                         if (dep.getType() == Dependency.TYPE_REQUIRES) {
@@ -290,7 +295,6 @@ public final class Util {
                             if (providers != null) {
                                 if (providers.contains(m1)) {
                                     providers = new ArrayList<>(providers);
-                                    providers.remove(m1);
                                 }
                                 l = fillMapSlot(m, m1);
                                 l.addAll(providers);
@@ -309,6 +313,8 @@ public final class Util {
                 }
                 if (l != null) {
                     l.remove(m1);
+                    // remove fragments for m1 from m1's dependencies
+                    l.removeAll(frags);
                 }
             }
             if (l != null) {

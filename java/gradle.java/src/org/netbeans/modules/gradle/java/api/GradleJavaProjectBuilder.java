@@ -86,7 +86,7 @@ final class GradleJavaProjectBuilder implements ProjectInfoExtractor.Result {
                 Map<SourceType, String> sourceComp = new EnumMap<>(SourceType.class);
                 Map<SourceType, String> targetComp = new EnumMap<>(SourceType.class);
                 Map<SourceType, List<String>> compilerArgs = new EnumMap<>(SourceType.class);
-                for (SourceType lang : Arrays.asList(JAVA, GROOVY, SCALA)) {
+                for (SourceType lang : Arrays.asList(JAVA, GROOVY, SCALA, KOTLIN)) {
                     String sc = (String) info.get("sourceset_" + name + "_" + lang.name() + "_source_compatibility");
                     String tc = (String) info.get("sourceset_" + name + "_" + lang.name() + "_target_compatibility");
                     if (sc != null) {
@@ -98,6 +98,11 @@ final class GradleJavaProjectBuilder implements ProjectInfoExtractor.Result {
                     List<String> compArgs = (List<String>) info.get("sourceset_" + name + "_" + lang.name() + "_compiler_args");
                     if (compArgs != null) {
                         compilerArgs.put(lang, Collections.unmodifiableList(compArgs));
+                    }
+                    // if detected, note the output dirs for individual language(s).
+                    File f = (File)info.get("sourceset_" + name + "_" + lang.name() + "_output_classes");
+                    if (f != null) {
+                        sourceSet.outputs.put(lang, f);
                     }
                 }
                 sourceSet.sourcesCompatibility = Collections.unmodifiableMap(sourceComp);
@@ -192,6 +197,11 @@ final class GradleJavaProjectBuilder implements ProjectInfoExtractor.Result {
                         File scalaDir = new File(dir, "scala");
                         if (scalaDir.isDirectory()) {
                             gss.sources.put(GradleJavaSourceSet.SourceType.SCALA, Collections.singleton(scalaDir));
+                            isJava = true;
+                        }
+                        File kotlinDir = new File(dir, "kotlin");
+                        if (kotlinDir.isDirectory()) {
+                            gss.sources.put(GradleJavaSourceSet.SourceType.KOTLIN, Collections.singleton(kotlinDir));
                             isJava = true;
                         }
                     }

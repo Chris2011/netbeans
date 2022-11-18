@@ -218,6 +218,8 @@ public class JavaScriptEnginesTest {
 
     @Test
     public void returnArrayInJS() throws Exception {
+        Assume.assumeFalse("Broken in GraalVM 20.3.0 fixed in GraalVM 21.1.0", "25.272-b10-jvmci-20.3-b06".equals(System.getProperty("java.vm.version")));
+
         Object fn = engine.eval("(function(obj) {\n"
                 + "  return [ 1, 2, 'a', Math.PI, obj ];\n"
                 + "})\n");
@@ -253,12 +255,12 @@ public class JavaScriptEnginesTest {
     @Test
     public void allowLoadAClassInJS() throws Exception {
         Assume.assumeTrue("All access has to be allowed", allowAllAccess);
-        // BEGIN: org.netbeans.api.scripting.JavaScriptEnginesTest#allowLoadAClassInJS
+        // @start region="allowLoadAClassInJS"
         Object fn = engine.eval("(function(obj) {\n"
                 + "  var Long = Java.type('java.lang.Long');\n"
                 + "  return new Long(33);\n"
                 + "})\n");
-        // END: org.netbeans.api.scripting.JavaScriptEnginesTest#allowLoadAClassInJS
+        // @end region="allowLoadAClassInJS"
         assertNotNull(fn);
 
         Object value = ((Invocable) engine).invokeMethod(fn, "call", null, null);

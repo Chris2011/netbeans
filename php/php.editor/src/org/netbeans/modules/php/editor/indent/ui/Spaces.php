@@ -6,8 +6,10 @@ namespace ExampleNamespace;
 use Some\Classes\{ClassA, ClassB, ClassC as C};
 
 class Example implements Iface1, Iface2, Iface3 {
-
+#[A1("param")]
 private ClassA|ClassB|null $unionType;
+
+private ClassA&ClassB $intersectionType;
 
     public function ifExample ($a, $b) {
         if (convert($a) > $b) {
@@ -101,15 +103,41 @@ public function unionTypesExample(
     return null;
 }
 
+public function intersectionTypesExample(
+        ClassA&ClassB $object
+        ): ClassA&ClassB {
+    return $object;
+}
+
 public function nullsafeOperatorExample(object $object){
     $object?->nullsafe();
 }
 }
 
+enum EnumExample: string {
+
+    case FOO = 'F';
+    case BAR = 'B';
+
+    public function example(): string {
+        return match ($this) {
+            static::FOO => 'Foo',
+            static::BAR => 'Bar',
+        };
+    }
+}
+
+$anonymousFunc = function ($arg) use ($param):int {
+    return 1;
+};
+
 // Wrapping: Method Call Arguments must be set
 (new Example())->alignParamsExample('one',
         'two', 'three',
         'four', 'five');
+
+function namedArguments($a, $b) {}
+namedArguments(a:1, b:2);
 
 $shortName=10;
 $veryLooongName=20;

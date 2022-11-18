@@ -43,7 +43,12 @@ public final class NbGradleProjectFactory implements ProjectFactory2 {
 
     @Override
     public ProjectManager.Result isProject2(FileObject dir) {
-        return isProject(dir) ? new ProjectManager.Result(NbGradleProject.getIcon()) : null;
+        if (!isProject(dir)) {
+            return null;
+        }
+        // project display name can be only safely determined if the project is loaded
+        return isProject(dir) ? new ProjectManager.Result(
+                null, NbGradleProject.GRADLE_PROJECT_TYPE, NbGradleProject.getIcon()) : null;
     }
 
     @Override
@@ -87,7 +92,12 @@ public final class NbGradleProjectFactory implements ProjectFactory2 {
 
     @Override
     public Project loadProject(FileObject dir, ProjectState ps) throws IOException {
-        return isProject(dir) ? new NbGradleProjectImpl(dir, ps) : null;
+        if (!isProject(dir)) {
+            return null;
+        }
+        NbGradleProjectImpl prj = new NbGradleProjectImpl(dir, ps);
+        prj.getGradleProject();
+        return prj;
     }
 
     @Override

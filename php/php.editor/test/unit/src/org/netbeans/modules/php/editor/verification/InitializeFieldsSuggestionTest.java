@@ -109,6 +109,42 @@ public class InitializeFieldsSuggestionTest extends PHPHintsTestBase {
         checkHints(new InitializeFieldSuggestion(), "unionTypes_01.php", "            \\Test\\Foo|Bar $mix^ed,");
     }
 
+    public void testConstructorPropertyPromotion_01_Class() throws Exception {
+        checkHints(new InitializeFieldSuggestion(), "constructorPropertyPromotion_01.php", "private int $^x, // class");
+    }
+
+    public void testConstructorPropertyPromotion_01_Trait() throws Exception {
+        checkHints(new InitializeFieldSuggestion(), "constructorPropertyPromotion_01.php", "public int $^x, // trait");
+    }
+
+    public void testConstructorPropertyPromotion_01_AnonClass() throws Exception {
+        checkHints(new InitializeFieldSuggestion(), "constructorPropertyPromotion_01.php", "private int|string $p^aram, // anon class");
+    }
+
+    public void testConstructorPropertyPromotion_02_Class() throws Exception {
+        checkHints(new InitializeFieldSuggestion(), "constructorPropertyPromotion_02.php", "private ?int $^x = null, // class");
+    }
+
+    public void testConstructorPropertyPromotion_02_Trait() throws Exception {
+        checkHints(new InitializeFieldSuggestion(), "constructorPropertyPromotion_02.php", "private ?int $^x = null, // trait");
+    }
+
+    public void testConstructorPropertyPromotion_02_AnonClass() throws Exception {
+        checkHints(new InitializeFieldSuggestion(), "constructorPropertyPromotion_02.php", "private int|string $p^aram = \"default value\", // anon class");
+    }
+
+    public void testConstructorPropertyPromotion_03_Class() throws Exception {
+        checkHints(new InitializeFieldSuggestion(), "constructorPropertyPromotion_03.php", "$^y, // class");
+    }
+
+    public void testConstructorPropertyPromotion_03_Trait() throws Exception {
+        checkHints(new InitializeFieldSuggestion(), "constructorPropertyPromotion_03.php", "$^y, // trait");
+    }
+
+    public void testConstructorPropertyPromotion_03_AnonClass() throws Exception {
+        checkHints(new InitializeFieldSuggestion(), "constructorPropertyPromotion_03.php", "$^y, // anon class");
+    }
+
     // Fix
     public void testIssue270368Fix_01() throws Exception {
         applyHint(new InitializeFieldSuggestionStub(PhpVersion.PHP_73), "testIssue270368_01.php", "function __construct(?string $tes^t) {", "Initialize Field");
@@ -169,6 +205,22 @@ public class InitializeFieldsSuggestionTest extends PHPHintsTestBase {
 
     public void testUnionTypesFix_01d_php73() throws Exception {
         applyHint(new InitializeFieldSuggestionStub(PhpVersion.PHP_73), "unionTypes_01.php", "            \\Test\\Foo|Bar $mi^xed,", "Initialize Field");
+    }
+
+    public void testIntersectionTypes_01a() throws Exception {
+        checkHints(new InitializeFieldSuggestion(), "intersectionTypes_01.php", "            Foo&Bar $para^m1,");
+    }
+
+    public void testIntersectionTypes_01b() throws Exception {
+        checkHints(new InitializeFieldSuggestion(), "intersectionTypes_01.php", "            \\Test\\Foo&Bar $par^am2,");
+    }
+
+    public void testIntersectionTypesFix_01a() throws Exception {
+        applyHint(new InitializeFieldSuggestionStub(PhpVersion.PHP_81), "intersectionTypes_01.php", "            Foo&Bar $par^am1,", "Initialize Field");
+    }
+
+    public void testIntersectionTypesFix_01b() throws Exception {
+        applyHint(new InitializeFieldSuggestionStub(PhpVersion.PHP_81), "intersectionTypes_01.php", "            \\Test\\Foo&Bar $par^am2,", "Initialize Field");
     }
 
     //~ Inner classes

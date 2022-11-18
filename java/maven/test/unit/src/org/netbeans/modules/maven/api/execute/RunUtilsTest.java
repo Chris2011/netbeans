@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.netbeans.api.project.Project;
 import org.netbeans.spi.project.AuxiliaryProperties;
+import org.netbeans.spi.project.ProjectServiceProvider;
 import org.openide.filesystems.FileObject;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
@@ -81,5 +82,43 @@ public class RunUtilsTest {
             }
         }
     }
-    
+
+    // @start region="GeneralPrerequisiteChecker"
+    /**
+     * Registers a service provider in project's lookup, for all packaging types.
+     */
+    @ProjectServiceProvider(service= PrerequisitesChecker.class, projectType="org-netbeans-modules-maven")
+    public static class GeneralPrerequisiteChecker implements PrerequisitesChecker {
+        @Override
+        public boolean checkRunConfig(RunConfig config) {
+            return true;
+        }
+    }
+    // @end region="GeneralPrerequisiteChecker"
+
+    // @start region="SpecificPrerequisiteChecker"
+    /**
+     * Registers a service provider for "jar" packaging type only.
+     */
+    @ProjectServiceProvider(service= PrerequisitesChecker.class, projectType="org-netbeans-modules-maven/jar")
+    public static class SpecificPrerequisiteChecker implements PrerequisitesChecker {
+        @Override
+        public boolean checkRunConfig(RunConfig config) {
+            return true;
+        }
+    }
+    // @end region="SpecificPrerequisiteChecker"
+
+    // @start region="FallbackPrerequisiteChecker"
+    /**
+     * Registers a service fallback, which will be run after all generics and services specific for a packaging type.
+     */
+    @ProjectServiceProvider(service= PrerequisitesChecker.class, projectType="org-netbeans-modules-maven/_any")
+    public static class FallbackPrerequisiteChecker implements PrerequisitesChecker {
+        @Override
+        public boolean checkRunConfig(RunConfig config) {
+            return true;
+        }
+    }
+    // @end region="FallbackPrerequisiteChecker"
 }

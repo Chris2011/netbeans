@@ -23,6 +23,7 @@ import java.beans.BeanInfo;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -85,7 +86,7 @@ public class LanguageStorageTest extends NbTestCase {
 
         FileObject grammar = FileUtil.createData(data, "any.json");
         try (OutputStream out = grammar.getOutputStream()) {
-            out.write("{ \"scopeName\" : \"test\" }".getBytes("UTF-8"));
+            out.write("{ \"scopeName\" : \"test\" }".getBytes(StandardCharsets.UTF_8));
         }
         FileObject testFO = FileUtil.createData(root, "test.txt");
         assertEquals("content/unknown", FileUtil.getMIMEType(testFO));
@@ -103,7 +104,7 @@ public class LanguageStorageTest extends NbTestCase {
         Image icon = recognized.getNodeDelegate().getIcon(BeanInfo.ICON_COLOR_16x16);
         String url = ((URL) icon.getProperty("url", null)).getFile();
         assertTrue(url.contains("/org/openide/nodes/defaultNode.png"));
-        Language l = MimeLookup.getLookup("text/x-ext-t").lookup(Language.class);
+        Language<?> l = MimeLookup.getLookup("text/x-ext-t").lookup(Language.class);
         assertNotNull(l);
 
         LanguageStorage.store(Arrays.asList(new LanguageDescription("t", "txt", FileUtil.toFile(grammar).getAbsolutePath(), null, "txt", null)));

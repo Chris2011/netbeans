@@ -32,7 +32,6 @@ import javax.swing.SwingUtilities;
 import org.netbeans.api.java.classpath.GlobalPathRegistry;
 import org.netbeans.api.java.source.CompilationController;
 import org.netbeans.api.java.source.JavaSource;
-import org.netbeans.api.java.source.Task;
 import org.openide.cookies.LineCookie;
 import org.openide.filesystems.FileObject;
 import org.openide.loaders.DataObject;
@@ -45,14 +44,7 @@ import org.openide.text.Line;
  */
 public final class LocationOpener {
 
-    public static final Location.Finder GLOBAL_FINDER = new Location.Finder() {
-
-        @Override
-        public FileObject findFileObject(Location loc) {
-            return GlobalPathRegistry.getDefault().findResource(loc.getFileName());
-        }
-
-    };
+    public static final Location.Finder GLOBAL_FINDER = (Location loc) -> GlobalPathRegistry.getDefault().findResource(loc.getFileName());
     final Location location;
     final Location.Finder finder;
 
@@ -71,10 +63,10 @@ public final class LocationOpener {
             if (location.isLine()) {
                 openAtLine(fo, location.getLineNum());
             } else if (location.isMethod()) {
-                int l = getMethodLine(fo, location.getTarget());
+                int l = getMethodLine(fo, location.getClassNames(), location.getTarget());
                 openAtLine(fo, l);
             } else {
-                int l = getTargetLine(fo);
+                int l = getTargetLine(fo, location.getClassNames());
                 openAtLine(fo, l);
             }
         }
@@ -89,24 +81,28 @@ public final class LocationOpener {
         return cleanName;
     }
 
-    private int getMethodLine(final FileObject fo, final String methodNameWithParams) {
+    private int getMethodLine(final FileObject fo, final String[] classNames, final String methodNameWithParams) {
         String methodName = stripMethodParams(methodNameWithParams);
         final int[] line = new int[1];
         JavaSource javaSource = JavaSource.forFileObject(fo);
         if (javaSource != null) {
             try {
                 javaSource.runUserActionTask((CompilationController compilationController) -> {
-                    compilationController.toPhase(JavaSource.Phase.ELEMENTS_RESOLVED);
+                  compilationController.toPhase(JavaSource.Phase.ELEMENTS_RESOLVED);
                     Trees trees = compilationController.getTrees();
                     CompilationUnitTree compilationUnitTree = compilationController.getCompilationUnit();
                     List<? extends Tree> typeDecls = compilationUnitTree.getTypeDecls();
                     for (Tree tree : typeDecls) {
-                        Element element = trees.getElement(trees.getPath(compilationUnitTree, tree));
-                        if (element != null && element.getKind() == ElementKind.CLASS && element.getSimpleName().contentEquals(fo.getName())) {
+                        Element element = getClassElement(
+                                trees.getElement(trees.getPath(compilationUnitTree, tree)),
+                                classNames,0);
+                        if (element != null) {
                             List<? extends ExecutableElement> methodElements = ElementFilter.methodsIn(element.getEnclosedElements());
+                            System.out.println("Looking for methodName " + methodName);
                             for (Element child : methodElements) {
                                 if (child.getSimpleName().contentEquals(methodName)) {
                                     long pos = trees.getSourcePositions().getStartPosition(compilationUnitTree, trees.getTree(child));
+                                    System.out.println("Found method. LINE: " + pos);
                                     line[0] = (int) compilationUnitTree.getLineMap().getLineNumber(pos);
                                     break;
                                 }
@@ -122,7 +118,24 @@ public final class LocationOpener {
         return 1;
     }
 
-    private int getTargetLine(final FileObject fo) {
+
+    private Element getClassElement(Element element, String[] classNames, int startIndex) {
+        if (element != null && element.getKind() == ElementKind.CLASS &&
+                element.getSimpleName().contentEquals(classNames[startIndex])) {
+            if (startIndex == classNames.length - 1) {
+                return element;
+            }
+            for (Element enclosedElement : element.getEnclosedElements()) {
+                Element matchingElement = getClassElement(enclosedElement, classNames, startIndex + 1);
+                if (matchingElement != null) {
+                    return matchingElement;
+                }
+            }
+        }
+        return null;
+    }
+
+    private int getTargetLine(final FileObject fo, String[] classNames) {
         final int[] line = new int[]{0};
         JavaSource javaSource = JavaSource.forFileObject(fo);
         if (javaSource != null) {
@@ -133,9 +146,13 @@ public final class LocationOpener {
                     CompilationUnitTree compilationUnitTree = compilationController.getCompilationUnit();
                     List<? extends Tree> typeDecls = compilationUnitTree.getTypeDecls();
                     for (Tree tree : typeDecls) {
-                        Element element = trees.getElement(trees.getPath(compilationUnitTree, tree));
-                        if (element != null && element.getKind() == ElementKind.CLASS && element.getSimpleName().contentEquals(fo.getName())) {
-                            long pos = trees.getSourcePositions().getStartPosition(compilationUnitTree, tree);
+                        Element element = getClassElement(
+                                trees.getElement(trees.getPath(compilationUnitTree, tree)),
+                                classNames,0);
+                        if (element != null) {
+                            long pos = trees.getSourcePositions().getStartPosition(
+                                    compilationUnitTree,
+                                    trees.getTree(element));
                             line[0] = (int) compilationUnitTree.getLineMap().getLineNumber(pos);
                             break;
                         }

@@ -28,6 +28,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.SwingUtilities;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.InvalidArtifactRTException;
@@ -40,10 +42,11 @@ import org.apache.maven.model.Model;
 import org.apache.maven.model.building.ModelBuildingException;
 import org.apache.maven.project.MavenProject;
 import org.netbeans.api.annotations.common.NonNull;
-import org.netbeans.api.progress.aggregate.AggregateProgressFactory;
 import org.netbeans.api.progress.aggregate.AggregateProgressHandle;
+import org.netbeans.api.progress.aggregate.BasicAggregateProgressFactory;
 import org.netbeans.api.progress.aggregate.ProgressContributor;
 import org.netbeans.api.project.Project;
+import org.netbeans.api.project.ProjectActionContext;
 import org.netbeans.modules.maven.NbMavenProjectImpl;
 import static org.netbeans.modules.maven.api.Bundle.*;
 import org.netbeans.modules.maven.embedder.EmbedderFactory;
@@ -53,6 +56,7 @@ import org.netbeans.modules.maven.modelcache.MavenProjectCache;
 import org.netbeans.modules.maven.options.MavenSettings;
 import org.netbeans.modules.maven.options.MavenSettings.DownloadStrategy;
 import org.netbeans.modules.maven.spi.PackagingProvider;
+import org.netbeans.spi.project.ProjectServiceProvider;
 import org.openide.awt.StatusDisplayer;
 import org.openide.filesystems.FileAttributeEvent;
 import org.openide.filesystems.FileChangeListener;
@@ -63,21 +67,38 @@ import org.openide.filesystems.FileUtil;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle.Messages;
 import org.openide.util.RequestProcessor;
-import org.openide.util.Task;
 import org.openide.util.Utilities;
 
 /**
  * an instance resides in project lookup, allows to get notified on project and 
  * relative path changes.
+ * <p/>
+ * <b>From version 2.148</b> plugin-specific services can be registered using {@link ProjectServiceProvider} 
+ * annotation in subfolders of the project Lookup registration area whose names follow a Plugin group and 
+ * artifact ID. 
+ * <p/>
+ * <div class="nonnormative">
+ * {@snippet file="org/netbeans/modules/maven/NbMavenProjectImplTest.java" region="ProjectServiceProvider.pluginSpecific"}
+ * Shows a service, that will become available from project Lookup whenever the project uses {@code org.netbeans.modules.maven:test.plugin}
+ * plugin in its model.
+ * </div>
+ * 
  * @author mkleint
  */
 public final class NbMavenProject {
-
+    private static final Logger LOG = Logger.getLogger(NbMavenProject.class.getName());
     /**
      * the only property change fired by the class, means that the pom file
      * has changed.
      */
     public static final String PROP_PROJECT = "MavenProject"; //NOI18N
+
+    /**
+     * ID of the Maven project type.
+     * @since 2.148
+     */
+    public static final String TYPE = "org-netbeans-modules-maven"; //NOI18N
+    
     /**
      * TODO comment
      * 
@@ -206,9 +227,9 @@ public final class NbMavenProject {
                         return;
                     }
                     MavenEmbedder online = EmbedderFactory.getOnlineEmbedder();
-                    AggregateProgressHandle hndl = AggregateProgressFactory.createHandle(Progress_Download(),
+                    AggregateProgressHandle hndl = BasicAggregateProgressFactory.createHandle(Progress_Download(),
                             new ProgressContributor[] {
-                                AggregateProgressFactory.createProgressContributor("zaloha") },  //NOI18N
+                                BasicAggregateProgressFactory.createProgressContributor("zaloha") },  //NOI18N
                             ProgressTransferListener.cancellable(), null);
 
                     boolean ok = true;
@@ -266,6 +287,22 @@ public final class NbMavenProject {
      */ 
     public @NonNull MavenProject getMavenProject() {
         return project.getOriginalMavenProject();
+    }
+    
+    /**
+     * Returns a project evaluated for a certain purpose. The while {@link #getMavenProject}
+     * works with the <b>active configuration</b> and does not apply any action-specific properties,
+     * this method tries to apply mappings, configurations, etc when loading the project model.
+     * <p>
+     * Note that loading an evaluated project may take significant time (comparable to loading
+     * the base project itself). The implementation might optimize if the passed context does not
+     * prescribe different profiles, properties etc than have been used for the default model.
+     * 
+     * @param context the loading context
+     * @return evaluated project
+     */
+    public @NonNull MavenProject getEvaluatedProject(ProjectActionContext context) {
+        return project.getEvaluatedProject(context);
     }
     
     /**
@@ -340,6 +377,7 @@ public final class NbMavenProject {
         for (PackagingProvider pp : Lookup.getDefault().lookupAll(PackagingProvider.class)) {
             String p = pp.packaging(project);
             if (p != null) {
+                LOG.log(Level.FINE, "Packaging provider {0} returned packacing: {1}", new Object[] { pp, p });
                 return p;
             }
         }
@@ -440,10 +478,10 @@ public final class NbMavenProject {
                 Set<Artifact> arts = project.getOriginalMavenProject().getArtifacts();
                 ProgressContributor[] contribs = new ProgressContributor[arts.size()];
                 for (int i = 0; i < arts.size(); i++) {
-                    contribs[i] = AggregateProgressFactory.createProgressContributor("multi-" + i); //NOI18N
+                    contribs[i] = BasicAggregateProgressFactory.createProgressContributor("multi-" + i); //NOI18N
                 }
                 String label = javadoc ? Progress_Javadoc() : Progress_Source();
-                AggregateProgressHandle handle = AggregateProgressFactory.createHandle(label,
+                AggregateProgressHandle handle = BasicAggregateProgressFactory.createHandle(label,
                         contribs, ProgressTransferListener.cancellable(), null);
                 handle.start();
                 try {

@@ -499,14 +499,43 @@ public abstract class RestSupport {
                         Profile.JAVA_EE_8_FULL.equals(profile);
         boolean isJakartaee8 = Profile.JAKARTA_EE_8_WEB.equals(profile) ||
                         Profile.JAKARTA_EE_8_FULL.equals(profile);
+        boolean isJakartaee9 = Profile.JAKARTA_EE_9_WEB.equals(profile) ||
+                        Profile.JAKARTA_EE_9_FULL.equals(profile);
+        boolean isJakartaee91 = Profile.JAKARTA_EE_9_1_WEB.equals(profile) ||
+                        Profile.JAKARTA_EE_9_1_FULL.equals(profile);
         // Fix for BZ#216345: JAVA_EE_6_WEB profile doesn't contain JAX-RS API
-        return (isJee6 && MiscPrivateUtilities.supportsTargetProfile(project, Profile.JAVA_EE_6_FULL)) || isJee7;
+        return (isJee6 && MiscPrivateUtilities.supportsTargetProfile(project, Profile.JAVA_EE_6_FULL)) || isJee7 || isJee8 || isJakartaee8 || isJakartaee9 || isJakartaee91;
     }
 
     /**
+     * Is this JAKARTAEE9 profile project?
+     */
+    public boolean isJakartaEE91() {
+        WebModule webModule = WebModule.getWebModule(project.getProjectDirectory());
+        if ( webModule == null ){
+            return false;
+        }
+        Profile profile = webModule.getJ2eeProfile();
+        return Profile.JAKARTA_EE_9_1_WEB.equals(profile) ||
+                        Profile.JAKARTA_EE_9_1_FULL.equals(profile);
+    }
+    
+    /**
+     * Is this JAKARTAEE9 profile project?
+     */
+    public boolean isJakartaEE9() {
+        WebModule webModule = WebModule.getWebModule(project.getProjectDirectory());
+        if ( webModule == null ){
+            return false;
+        }
+        Profile profile = webModule.getJ2eeProfile();
+        return Profile.JAKARTA_EE_9_WEB.equals(profile) ||
+                        Profile.JAKARTA_EE_9_FULL.equals(profile);
+    }
+    /**
      * Is this JAKARTAEE8 profile project?
      */
-    public boolean isJakartaEE8(){
+    public boolean isJakartaEE8() {
         WebModule webModule = WebModule.getWebModule(project.getProjectDirectory());
         if ( webModule == null ){
             return false;

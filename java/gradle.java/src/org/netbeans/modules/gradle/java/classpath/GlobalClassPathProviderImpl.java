@@ -19,7 +19,6 @@
 
 package org.netbeans.modules.gradle.java.classpath;
 
-import org.netbeans.modules.gradle.api.NbGradleProject;
 import org.netbeans.modules.gradle.java.api.ProjectSourcesClassPathProvider;
 import java.util.Arrays;
 import java.util.logging.Level;
@@ -28,24 +27,22 @@ import org.netbeans.api.java.classpath.ClassPath;
 import org.netbeans.api.java.classpath.GlobalPathRegistry;
 import org.netbeans.api.project.Project;
 import static org.netbeans.spi.java.classpath.ClassPathFactory.createClassPath;
-import org.netbeans.spi.project.ProjectServiceProvider;
 import org.netbeans.spi.project.ui.ProjectOpenedHook;
 
 /**
  *
  * @author Laszlo Kishalmi
  */
-@ProjectServiceProvider(service = {ProjectSourcesClassPathProvider.class, ProjectOpenedHook.class}, projectType = NbGradleProject.GRADLE_PLUGIN_TYPE + "/java-base")
 public class GlobalClassPathProviderImpl extends ProjectOpenedHook implements ProjectSourcesClassPathProvider {
 
     private static final Logger LOG = Logger.getLogger(GlobalClassPathProviderImpl.class.getName());
 
     final Project project;
 
-    private final static int BOOT = 0;
-    private final static int SOURCE = 2;
-    private final static int COMPILE = 4;
-    private final static int RUNTIME = 6;
+    private static final int BOOT = 0;
+    private static final int SOURCE = 2;
+    private static final int COMPILE = 4;
+    private static final int RUNTIME = 6;
 
     final ClassPath[] cache = new ClassPath[RUNTIME + 2];
 

@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import org.netbeans.api.annotations.common.CheckForNull;
 import org.netbeans.modules.csl.api.OffsetRange;
 import org.netbeans.modules.parsing.spi.indexing.support.IndexDocument;
 import org.netbeans.modules.php.editor.CodeUtils;
@@ -53,6 +54,7 @@ import org.openide.util.Union2;
  * @author Radek Matous
  */
 class FieldElementImpl extends ScopeImpl implements FieldElement {
+
     String defaultType;
     private String defaultFQType;
     private String className;
@@ -97,7 +99,17 @@ class FieldElementImpl extends ScopeImpl implements FieldElement {
         for (TypeResolver typeResolver : instanceTypes) {
             if (typeResolver.isResolved()) {
                 QualifiedName typeName = typeResolver.getTypeName(false);
-                String type = typeName == null ? "" : typeName.toNamespaceName() + "\\" + typeName.getName(); // NOI18N
+                String type;
+                if (typeName == null) {
+                    type = ""; // NOI18N
+                } else {
+                    if (typeName.toNamespaceName().toString().isEmpty()
+                            && Type.isPrimitive(typeName.getName())) {
+                        type = typeName.getName();
+                    } else {
+                        type = typeName.toNamespaceName() + "\\" + typeName.getName(); // NOI18N
+                    }
+                }
                 if (this.defaultType != null) {
                     this.defaultType += String.format("|%s", type); //NOI18N
                 } else {
@@ -134,7 +146,6 @@ class FieldElementImpl extends ScopeImpl implements FieldElement {
         //super.addElement(element);
     }
 
-
     static String toName(SingleFieldDeclaration node) {
         return VariableNameImpl.toName(node.getName());
     }
@@ -150,7 +161,7 @@ class FieldElementImpl extends ScopeImpl implements FieldElement {
     public Collection<? extends TypeScope> getDefaultTypes() {
         Collection<TypeScope> typeScopes = new HashSet<>();
         if (defaultFQType != null && defaultFQType.length() > 0) {
-            String[] allTypeNames = defaultFQType.split("\\|");
+            String[] allTypeNames = defaultFQType.split("\\&|\\|"); // NOI18N
             for (String typeName : allTypeNames) {
                 String modifiedTypeName = typeName;
                 if (typeName.indexOf("[") != -1) {
@@ -192,7 +203,7 @@ class FieldElementImpl extends ScopeImpl implements FieldElement {
     public Collection<? extends String> getTypeNames(int offset) {
         AssignmentImpl assignment = findAssignment(offset);
         Collection<? extends String> retval = (assignment != null) ? assignment.getTypeNames() : Collections.emptyList();
-        if  (retval.isEmpty()) {
+        if (retval.isEmpty()) {
             retval = getDefaultTypeNames();
             if (retval.isEmpty()) {
                 ClassScope classScope = (ClassScope) getInScope();
@@ -207,6 +218,7 @@ class FieldElementImpl extends ScopeImpl implements FieldElement {
     }
 
     private static Set<String> recursionDetection = new HashSet<>(); //#168868
+
     @Override
     public Collection<? extends TypeScope> getArrayAccessTypes(int offset) {
         return getTypes(offset);
@@ -216,7 +228,7 @@ class FieldElementImpl extends ScopeImpl implements FieldElement {
     public Collection<? extends TypeScope> getTypes(int offset) {
         AssignmentImpl assignment = findAssignment(offset);
         Collection retval = (assignment != null) ? assignment.getTypes() : Collections.emptyList();
-        if  (retval.isEmpty()) {
+        if (retval.isEmpty()) {
             retval = getDefaultTypes();
             if (retval.isEmpty() && getInScope() instanceof ClassScope) {
                 ClassScope classScope = (ClassScope) getInScope();
@@ -229,7 +241,7 @@ class FieldElementImpl extends ScopeImpl implements FieldElement {
                                 return variableName.getFieldTypes(this, offset);
                             }
                         } finally {
-                          recursionDetection.remove(checkName);
+                            recursionDetection.remove(checkName);
                         }
                     }
                 }
@@ -243,13 +255,19 @@ class FieldElementImpl extends ScopeImpl implements FieldElement {
         Collection<String> retval = Collections.<String>emptyList();
         if (defaultType != null && defaultType.length() > 0) {
             retval = new ArrayList<>();
-            for (String typeName : defaultType.split("\\|")) { //NOI18N
+            for (String typeName : defaultType.split("\\&|\\|")) { //NOI18N
                 if (!VariousUtils.isSemiType(typeName)) {
                     retval.add(typeName);
                 }
             }
         }
         return retval;
+    }
+
+    @CheckForNull
+    @Override
+    public String getDefaultType() {
+        return defaultType;
     }
 
     @Override
@@ -275,9 +293,9 @@ class FieldElementImpl extends ScopeImpl implements FieldElement {
             for (FieldAssignmentImpl assignmentImpl : assignments) {
                 if (assignmentImpl.getBlockRange().containsInclusive(offset)) {
                     if (retval == null || retval.getOffset() <= assignmentImpl.getOffset()) {
-                         if (assignmentImpl.getOffset() < offset) {
+                        if (assignmentImpl.getOffset() < offset) {
                             retval = assignmentImpl;
-                         }
+                        }
                     }
                 }
             }

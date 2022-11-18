@@ -42,12 +42,10 @@ import java.util.Set;
 import javax.swing.Icon;
 import javax.swing.event.ChangeListener;
 import org.netbeans.api.java.project.JavaProjectConstants;
-import org.netbeans.api.project.FileOwnerQuery;
 import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ProjectManager;
 import org.netbeans.api.project.SourceGroup;
 import org.netbeans.api.project.Sources;
-import org.netbeans.spi.project.ProjectServiceProvider;
 import org.netbeans.spi.project.SourceGroupModifierImplementation;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
@@ -59,7 +57,6 @@ import org.openide.util.Pair;
  *
  * @author Laszlo Kishalmi
  */
-@ProjectServiceProvider(service = {Sources.class, SourceGroupModifierImplementation.class}, projectType = NbGradleProject.GRADLE_PLUGIN_TYPE + "/java-base")
 @NbBundle.Messages({
     "# {0} - source group name",
     "# {1} - language",
@@ -108,18 +105,21 @@ public class GradleSourcesImpl implements Sources, SourceGroupModifierImplementa
 
     private static final Map<String, String> COMMON_NAMES = new HashMap<>();
     public static final String SOURCE_TYPE_GROOVY    = "groovy";    //NOI18N
+    public static final String SOURCE_TYPE_KOTLIN    = "kotlin";    //NOI18N
     public static final String SOURCE_TYPE_GENERATED = "generated"; //NOI18N
 
     static {
         COMMON_NAMES.put("main.JAVA", "01main.java");
         COMMON_NAMES.put("main.GROOVY", "02main.groovy");
         COMMON_NAMES.put("main.SCALA", "03main.scala");
-        COMMON_NAMES.put("main.GENERATED", "04main.generated");
+        COMMON_NAMES.put("main.KOTLIN", "04main.kotlin");
+        COMMON_NAMES.put("main.GENERATED", "05main.generated");
         COMMON_NAMES.put("main.RESOURCES", "09main.resources");
         COMMON_NAMES.put("test.JAVA", "11test.java");
         COMMON_NAMES.put("test.GROOVY", "12test.groovy");
         COMMON_NAMES.put("test.SCALA", "13test.scala");
-        COMMON_NAMES.put("test.GENERATED", "14test.generated");
+        COMMON_NAMES.put("test.KOTLIN", "14test.kotlin");
+        COMMON_NAMES.put("test.GENERATED", "15test.generated");
         COMMON_NAMES.put("test.RESOURCES", "19test.resources");
         COMMON_NAMES.put("gatling.SCALA", "41gatling.scala");
         COMMON_NAMES.put("gatling.RESOURCES.data", "42gatling.data");
@@ -146,8 +146,8 @@ public class GradleSourcesImpl implements Sources, SourceGroupModifierImplementa
     private Map<String, Collection<File>> sourceGroups;
     private final Map<Pair<String, File>, SourceGroup> cache = new HashMap<>();
 
-    public GradleSourcesImpl(Project proj) {
-        this.proj = proj;
+    public GradleSourcesImpl(Project project) {
+        this.proj = project;
     }
 
     @Override
@@ -156,7 +156,7 @@ public class GradleSourcesImpl implements Sources, SourceGroupModifierImplementa
         ArrayList<SourceGroup> ret = new ArrayList<>();
         Set<SourceType> stype = soureType2SourceType(type);
         for (SourceType st : stype) {
-            Set<File> processed = new HashSet();
+            Set<File> processed = new HashSet<>();
             for (String group : gradleSources.keySet()) {
                 Set<File> dirs = gradleSources.get(group).getSourceDirs(st);
                 boolean unique = dirs.size() == 1;
@@ -337,6 +337,7 @@ public class GradleSourcesImpl implements Sources, SourceGroupModifierImplementa
             case JavaProjectConstants.SOURCES_TYPE_RESOURCES: return EnumSet.of(SourceType.RESOURCES);
             case SOURCE_TYPE_GENERATED: return EnumSet.of(SourceType.GENERATED);
             case SOURCE_TYPE_GROOVY: return EnumSet.of(SourceType.GROOVY); // Should be in the Groovy support module theoretically
+            case SOURCE_TYPE_KOTLIN: return EnumSet.of(SourceType.KOTLIN);
         }
         return Collections.emptySet();
     }
@@ -381,9 +382,6 @@ public class GradleSourcesImpl implements Sources, SourceGroupModifierImplementa
             if (proj != null) {
                 if (file.isFolder() && file != proj.getProjectDirectory() && ProjectManager.getDefault().isProject(file)) {
                     // #67450: avoid actually loading the nested project.
-                    return false;
-                }
-                if (FileOwnerQuery.getOwner(file) != proj) {
                     return false;
                 }
             }

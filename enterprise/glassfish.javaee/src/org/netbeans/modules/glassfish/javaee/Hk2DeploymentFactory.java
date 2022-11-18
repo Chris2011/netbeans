@@ -39,6 +39,8 @@ public class Hk2DeploymentFactory implements DeploymentFactory {
     private static Hk2DeploymentFactory ee7Instance;
     private static Hk2DeploymentFactory ee8Instance;
     private static Hk2DeploymentFactory jakartaee8Instance;
+    private static Hk2DeploymentFactory jakartaee9Instance;
+    private static Hk2DeploymentFactory jakartaee91Instance;
     private String[] uriFragments;
     private String version;
     private String displayName;
@@ -78,7 +80,7 @@ public class Hk2DeploymentFactory implements DeploymentFactory {
         // FIXME -- these strings should come from some constant place
         if (ee7Instance == null) {
             ServerUtilities tmp = ServerUtilities.getEe7Utilities();
-            ee7Instance = new Hk2DeploymentFactory(new String[]{"deployer:gfv4ee7:", "deployer:gfv4ee7wc:", "deployer:gfv4"}, "0.2", // NOI18N
+            ee7Instance = new Hk2DeploymentFactory(new String[]{"deployer:gfv4ee7:", "deployer:gfv4ee7wc:", "deployer:gfv4"}, "0.3", // NOI18N
                     NbBundle.getMessage(Hk2DeploymentFactory.class, "TXT_FactoryDisplayName"));  // NOI18N
             DeploymentFactoryManager.getInstance().registerDeploymentFactory(ee7Instance);
             ee7Instance.setServerUtilities(tmp);
@@ -94,7 +96,7 @@ public class Hk2DeploymentFactory implements DeploymentFactory {
         // FIXME -- these strings should come from some constant place
         if (ee8Instance == null) {
             ServerUtilities tmp = ServerUtilities.getEe8Utilities();
-            ee8Instance = new Hk2DeploymentFactory(new String[]{"deployer:gfv5ee8:", "deployer:gfv5"}, "0.2", // NOI18N
+            ee8Instance = new Hk2DeploymentFactory(new String[]{"deployer:gfv5ee8:", "deployer:gfv5"}, "0.4", // NOI18N
                     NbBundle.getMessage(Hk2DeploymentFactory.class, "TXT_FactoryDisplayName"));  // NOI18N
             DeploymentFactoryManager.getInstance().registerDeploymentFactory(ee8Instance);
             ee8Instance.setServerUtilities(tmp);
@@ -110,12 +112,44 @@ public class Hk2DeploymentFactory implements DeploymentFactory {
         // FIXME -- these strings should come from some constant place
         if (jakartaee8Instance == null) {
             ServerUtilities tmp = ServerUtilities.getJakartaEe8Utilities();
-            jakartaee8Instance = new Hk2DeploymentFactory(new String[]{"deployer:gfv510ee8:", "deployer:gfv510"}, "0.3", // NOI18N
+            jakartaee8Instance = new Hk2DeploymentFactory(new String[]{"deployer:gfv510ee8:", "deployer:gfv510"}, "0.5", // NOI18N
                     NbBundle.getMessage(Hk2DeploymentFactory.class, "TXT_FactoryDisplayName"));  // NOI18N
             DeploymentFactoryManager.getInstance().registerDeploymentFactory(jakartaee8Instance);
             jakartaee8Instance.setServerUtilities(tmp);
         }
         return jakartaee8Instance;
+    }
+
+    /**
+     *
+     * @return
+     */
+    public static synchronized DeploymentFactory createJakartaEe9() {
+        // FIXME -- these strings should come from some constant place
+        if (jakartaee9Instance == null) {
+            ServerUtilities tmp = ServerUtilities.getJakartaEe9Utilities();
+            jakartaee9Instance = new Hk2DeploymentFactory(new String[]{"deployer:gfv6ee9:", "deployer:gfv6"}, "0.6", // NOI18N
+                    NbBundle.getMessage(Hk2DeploymentFactory.class, "TXT_FactoryDisplayName"));  // NOI18N
+            DeploymentFactoryManager.getInstance().registerDeploymentFactory(jakartaee9Instance);
+            jakartaee9Instance.setServerUtilities(tmp);
+        }
+        return jakartaee9Instance;
+    }
+
+    /**
+     * 
+     * @return
+     */
+    public static synchronized DeploymentFactory createJakartaEe91() {
+        // FIXME -- these strings should come from some constant place
+        if (jakartaee91Instance == null) {
+            ServerUtilities tmp = ServerUtilities.getJakartaEe91Utilities();
+            jakartaee91Instance = new Hk2DeploymentFactory(new String[]{"deployer:gfv610ee9:", "deployer:gfv610"}, "0.7", // NOI18N
+                    NbBundle.getMessage(Hk2DeploymentFactory.class, "TXT_FactoryDisplayName"));  // NOI18N
+            DeploymentFactoryManager.getInstance().registerDeploymentFactory(jakartaee91Instance);
+            jakartaee91Instance.setServerUtilities(tmp);
+        }
+        return jakartaee91Instance;
     }
 
     /**

@@ -101,18 +101,21 @@ public final class FmtOptions {
     public static final String BLANK_LINES_BEFORE_FIELDS = "blankLinesBeforeField"; //NOI18N
     public static final String BLANK_LINES_BETWEEN_FIELDS = "blankLinesBetweenField"; //NOI18N
     public static final String BLANK_LINES_AFTER_FIELDS = "blankLinesAfterField"; //NOI18N
-    public static final String BLANK_LINES_GROUP_FIELDS_WITHOUT_DOC = "blankLinesGroupFieldsWithoutDoc"; //NOI18N
+    public static final String BLANK_LINES_GROUP_FIELDS_WITHOUT_DOC_AND_ATTRIBUTES = "blankLinesGroupFieldsWithoutDocAndAttributes"; //NOI18N
     public static final String BLANK_LINES_BEFORE_FUNCTION = "blankLinesBeforeFunction"; //NOI18N
     public static final String BLANK_LINES_AFTER_FUNCTION = "blankLinesAfterFunction"; //NOI18N
     public static final String BLANK_LINES_BEFORE_FUNCTION_END = "blankLinesBeforeFunctionEnd"; //NOI18N
     public static final String BLANK_LINES_AFTER_OPEN_PHP_TAG = "blankLinesAfterOpenPHPTag"; //NOI18N
     public static final String BLANK_LINES_AFTER_OPEN_PHP_TAG_IN_HTML = "blankLinesAfterOpenPHPTagInHTML"; //NOI18N
     public static final String BLANK_LINES_BEFORE_CLOSE_PHP_TAG = "blankLinesBeforeClosePHPTag"; //NOI18N
+    public static final String BLANK_LINES_MAX_PRESERVED = "blankLinesMaxPreserved"; //NOI18N
     public static final String SPACE_BEFORE_WHILE = "spaceBeforeWhile"; //NOI18N
     public static final String SPACE_BEFORE_ELSE = "spaceBeforeElse"; //NOI18N
     public static final String SPACE_BEFORE_CATCH = "spaceBeforeCatch"; //NOI18N
     public static final String SPACE_BEFORE_FINALLY = "spaceBeforeFinally"; //NOI18N
     public static final String SPACE_BEFORE_ANONYMOUS_CLASS_PAREN = "spaceBeforeAnonymousClassParen"; //NOI18N
+    public static final String SPACE_BEFORE_ANONYMOUS_FUNCTION_PAREN = "spaceBeforeAnonymousFunctionParen"; //NOI18N
+    public static final String SPACE_BEFORE_ATTRIBUTE_DECL_PAREN = "spaceBeforeAttributeDeclParen"; //NOI18N
     public static final String SPACE_BEFORE_METHOD_DECL_PAREN = "spaceBeforeMethodDeclParen"; //NOI18N
     public static final String SPACE_BEFORE_METHOD_CALL_PAREN = "spaceBeforeMethodCallParen"; //NOI18N
     public static final String SPACE_BEFORE_IF_PAREN = "spaceBeforeIfParen"; //NOI18N
@@ -132,6 +135,7 @@ public final class FmtOptions {
     public static final String SPACE_AROUND_NULLSAFE_OBJECT_OPS = "spaceAroundNullsafeObjectOps"; //NOI18N
     public static final String SPACE_AROUND_DECLARE_EQUAL = "spaceAroundDeclareEqual"; //NOI18N
     public static final String SPACE_AROUND_UNION_TYPE_SEPARATOR = "spaceAroundUnionTypeSeparator"; //NOI18N
+    public static final String SPACE_AROUND_INTERSECTION_TYPE_SEPARATOR = "spaceAroundIntersectionTypeSeparator"; //NOI18N
     public static final String SPACE_BEFORE_CLASS_DECL_LEFT_BRACE = "spaceBeforeClassDeclLeftBrace"; //NOI18N
     public static final String SPACE_BEFORE_ANONYMOUS_CLASS_LEFT_BRACE = "spaceBeforeAnonymousClassLeftBrace"; //NOI18N
     public static final String SPACE_BEFORE_METHOD_DECL_LEFT_BRACE = "spaceBeforeMethodDeclLeftBrace"; //NOI18N
@@ -158,6 +162,8 @@ public final class FmtOptions {
     public static final String SPACE_WITHIN_CATCH_PARENS = "spaceWithinCatchParens"; //NOI18N
     public static final String SPACE_WITHIN_TYPE_CAST_PARENS = "spaceWithinTypeCastParens"; //NOI18N
     public static final String SPACE_WITHIN_ARRAY_BRACKETS = "spaceWithinArrayBrackets"; //NOI18N
+    public static final String SPACE_WITHIN_ATTRIBUTE_BRACKETS = "spaceWithinAttributeBrackets"; //NOI18N
+    public static final String SPACE_WITHIN_ATTRIBUTE_DECL_PARENS = "spaceWithinAttributeDeclParens"; //NOI18N
     public static final String SPACE_BEFORE_COMMA = "spaceBeforeComma"; //NOI18N
     public static final String SPACE_AFTER_COMMA = "spaceAfterComma"; //NOI18N
     public static final String SPACE_BEFORE_SEMI = "spaceBeforeSemi"; //NOI18N
@@ -187,10 +193,17 @@ public final class FmtOptions {
     public static final String WRAP_EXTENDS_IMPLEMENTS_KEYWORD = "wrapExtendsImplementsKeyword"; //NOI18N
     public static final String WRAP_EXTENDS_IMPLEMENTS_LIST = "wrapExtendsImplementsList"; //NOI18N
     public static final String WRAP_METHOD_PARAMS = "wrapMethodParams"; //NOI18N
+    public static final String WRAP_METHOD_PARAMS_AFTER_LEFT_PAREN = "wrapMethodParamsAfterLeftParen"; // NOI18N
+    public static final String WRAP_METHOD_PARAMS_RIGHT_PAREN = "wrapMethodParamsRightParen"; // NOI18N
+    public static final String WRAP_METHOD_PARAMS_KEEP_PAREN_AND_BRACE_ON_THE_SAME_LINE = "wrapKeepParenAndBraceOnTheSameLine"; // NOI18N
     public static final String WRAP_METHOD_CALL_ARGS = "wrapMethodCallArgs"; //NOI18N
+    public static final String WRAP_METHOD_CALL_ARGS_AFTER_LEFT_PAREN = "wrapMethodCallArgsAfterLeftParen"; // NOI18N
+    public static final String WRAP_METHOD_CALL_ARGS_RIGHT_PAREN = "wrapMethodCallArgsRightParen"; // NOI18N
     public static final String WRAP_CHAINED_METHOD_CALLS = "wrapChainedMethodCalls"; //NOI18N
     public static final String WRAP_ARRAY_INIT = "wrapArrayInit"; //NOI18N
     public static final String WRAP_FOR = "wrapFor"; //NOI18N
+    public static final String WRAP_FOR_AFTER_LEFT_PAREN = "wrapForAfterLeftParen"; // NOI18N
+    public static final String WRAP_FOR_RIGHT_PAREN = "wrapForRightParen"; // NOI18N
     public static final String WRAP_FOR_STATEMENT = "wrapForStatement"; //NOI18N
     public static final String WRAP_IF_STATEMENT = "wrapIfStatement"; //NOI18N
     public static final String WRAP_WHILE_STATEMENT = "wrapWhileStatement"; //NOI18N
@@ -275,7 +288,7 @@ public final class FmtOptions {
             {BLANK_LINES_AFTER_CLASS_HEADER, "0"}, //NOI18N
             {BLANK_LINES_BEFORE_CLASS_END, "0"}, //NOI18N
             {BLANK_LINES_BEFORE_FIELDS, "1"}, //NOI18N
-            {BLANK_LINES_GROUP_FIELDS_WITHOUT_DOC, TRUE}, //NOI18N
+            {BLANK_LINES_GROUP_FIELDS_WITHOUT_DOC_AND_ATTRIBUTES, TRUE}, //NOI18N
             {BLANK_LINES_BETWEEN_FIELDS, "1"}, //NOI18N
             {BLANK_LINES_AFTER_FIELDS, "1"}, //NOI18N
             {BLANK_LINES_BEFORE_FUNCTION, "1"}, //NOI18N
@@ -284,12 +297,15 @@ public final class FmtOptions {
             {BLANK_LINES_AFTER_OPEN_PHP_TAG, "1"}, //NOI18N
             {BLANK_LINES_AFTER_OPEN_PHP_TAG_IN_HTML, "0"}, //NOI18N
             {BLANK_LINES_BEFORE_CLOSE_PHP_TAG, "0"}, //NOI18N
+            {BLANK_LINES_MAX_PRESERVED, "1"}, //NOI18N
 
             {SPACE_BEFORE_WHILE, TRUE},
             {SPACE_BEFORE_ELSE, TRUE},
             {SPACE_BEFORE_CATCH, TRUE},
             {SPACE_BEFORE_FINALLY, TRUE},
             {SPACE_BEFORE_ANONYMOUS_CLASS_PAREN, FALSE},
+            {SPACE_BEFORE_ANONYMOUS_FUNCTION_PAREN, TRUE},
+            {SPACE_BEFORE_ATTRIBUTE_DECL_PAREN, FALSE},
             {SPACE_BEFORE_METHOD_DECL_PAREN, FALSE},
             {SPACE_BEFORE_METHOD_CALL_PAREN, FALSE},
             {SPACE_BEFORE_IF_PAREN, TRUE},
@@ -309,6 +325,7 @@ public final class FmtOptions {
             {SPACE_AROUND_NULLSAFE_OBJECT_OPS, FALSE},
             {SPACE_AROUND_DECLARE_EQUAL, FALSE},
             {SPACE_AROUND_UNION_TYPE_SEPARATOR, FALSE},
+            {SPACE_AROUND_INTERSECTION_TYPE_SEPARATOR, FALSE},
             {SPACE_BEFORE_CLASS_DECL_LEFT_BRACE, TRUE},
             {SPACE_BEFORE_METHOD_DECL_LEFT_BRACE, TRUE},
             {SPACE_BEFORE_IF_LEFT_BRACE, TRUE},
@@ -334,6 +351,8 @@ public final class FmtOptions {
             {SPACE_WITHIN_CATCH_PARENS, FALSE},
             {SPACE_WITHIN_TYPE_CAST_PARENS, FALSE},
             {SPACE_WITHIN_ARRAY_BRACKETS, FALSE},
+            {SPACE_WITHIN_ATTRIBUTE_BRACKETS, FALSE},
+            {SPACE_WITHIN_ATTRIBUTE_DECL_PARENS, FALSE},
             {SPACE_BEFORE_COMMA, FALSE},
             {SPACE_AFTER_COMMA, TRUE},
             {SPACE_BEFORE_SEMI, FALSE},
@@ -364,10 +383,17 @@ public final class FmtOptions {
             {WRAP_EXTENDS_IMPLEMENTS_KEYWORD, WRAP_NEVER}, //NOI18N
             {WRAP_EXTENDS_IMPLEMENTS_LIST, WRAP_NEVER}, //NOI18N
             {WRAP_METHOD_PARAMS, WRAP_NEVER}, //NOI18N
+            {WRAP_METHOD_PARAMS_AFTER_LEFT_PAREN, FALSE}, //NOI18N
+            {WRAP_METHOD_PARAMS_RIGHT_PAREN, FALSE}, //NOI18N
+            {WRAP_METHOD_PARAMS_KEEP_PAREN_AND_BRACE_ON_THE_SAME_LINE, FALSE},
             {WRAP_METHOD_CALL_ARGS, WRAP_NEVER}, //NOI18N
+            {WRAP_METHOD_CALL_ARGS_AFTER_LEFT_PAREN, FALSE}, //NOI18N
+            {WRAP_METHOD_CALL_ARGS_RIGHT_PAREN, FALSE}, //NOI18N
             {WRAP_CHAINED_METHOD_CALLS, WRAP_NEVER}, //NOI18N
             {WRAP_ARRAY_INIT, WRAP_NEVER}, //NOI18N
             {WRAP_FOR, WRAP_NEVER}, //NOI18N
+            {WRAP_FOR_AFTER_LEFT_PAREN, FALSE}, //NOI18N
+            {WRAP_FOR_RIGHT_PAREN, FALSE}, //NOI18N
             {WRAP_FOR_STATEMENT, WRAP_ALWAYS}, //NOI18N
             {WRAP_IF_STATEMENT, WRAP_ALWAYS}, //NOI18N
             {WRAP_WHILE_STATEMENT, WRAP_ALWAYS}, //NOI18N

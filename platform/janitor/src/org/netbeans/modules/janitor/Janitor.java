@@ -30,9 +30,11 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.prefs.Preferences;
@@ -56,11 +58,33 @@ import org.openide.windows.OnShowing;
     "# {1} - the days of abandonement",
     "# {2} - the disk space can be reclaimed (in megabytes)",
     "TIT_ABANDONED_USERDIR=NetBeans {0} was last used {1} days ago.",
+
+    "# {0} - the name of the abandoned cache dir.",
+    "# {1} - the disk space can be reclaimed (in megabytes)",
+    "TIT_ABANDONED_CACHEDIR=NetBeans cache directory {0} seems to be abandoned.",
+
     "# {0} - is the user directory name",
     "# {1} - the days of abandonement",
     "# {2} - the disk space can be reclaimed (in megabytes)",
     "DESC_ABANDONED_USERDIR=Remove unused data and cache directories of NetBeans {0}. "
             + "Free up {2} MB of disk space.",
+
+    "# {0} - is the cache directory name",
+    "# {1} - the disk space can be reclaimed (in megabytes)",
+    "DESC_ABANDONED_CACHEDIR=NetBeans could not find a user dir for cache dir {0}, so it is probably abandoned. "
+            + "Remove abandoned cache dir, "
+            + "free up {1} MB of disk space.",
+
+    "TIT_CONFIRM_CLEANUP=Confirm Cleanup",
+
+    "# {0} - the dirname to be cleaned up",
+    "TXT_CONFIRM_CLEANUP=Remove user and cache data for NetBeans {0}?",
+
+        "# {0} - the dirname to be cleaned up",
+    "TXT_CONFIRM_CACHE_CLEANUP=Remove abandoned cache dir?",
+
+    "# {0} - the dirname to be cleaned up",
+    "LBL_CLEANUP=Removing unused/abandoned user and/or cache dirs."
 })
 public class Janitor {
 
@@ -68,14 +92,17 @@ public class Janitor {
 
     public static final String PROP_JANITOR_ENABLED = "janitorEnabled"; //NOI18N
     public static final String PROP_UNUSED_DAYS = "UnusedDays"; //NOI18N
+    public static final String PROP_AUTO_REMOVE_ABANDONED_CACHE = "autoRemoveAbandonedCache";
 
     private static final String LOGFILE_NAME = "var/log/messages.log"; //NOI18N
+    private static final String ALL_CHECKSUM_NAME = "lastModified/all-checksum.txt"; //NOI18N
     @StaticResource
     private static final String CLEAN_ICON = "org/netbeans/modules/janitor/resources/clean.gif"; //NOI18N
 
     static final RequestProcessor JANITOR_RP = new RequestProcessor("janitor", 1); //NOI18N
     static final Map<ActionListener, Notification> CLEANUP_TASKS = new WeakHashMap<>();
-    static final Runnable SCAN_FOR_JUNK = () -> {
+
+    static void scanForJunk() {
         // Remove previously opened notifications
         CLEANUP_TASKS.values().forEach((nf) -> nf.clear());
         CLEANUP_TASKS.clear();
@@ -84,30 +111,40 @@ public class Janitor {
         List<Pair<String, Integer>> otherVersions = getOtherVersions();
 
         for (Pair<String, Integer> ver : otherVersions) {
-            long toFree = size(getUserDir(ver.first())) + size(getCacheDir(ver.first()));
+            String name = ver.first();
+            Integer age = ver.second();
+            long toFree = size(getUserDir(name)) + size(getCacheDir(name));
             toFree = toFree / (1_000_000) + 1;
-            ActionListener cleanupListener = cleanupAction(ver.first());
-            Notification nf = NotificationDisplayer.getDefault().notify(
-                    Bundle.TIT_ABANDONED_USERDIR(ver.first(), ver.second(), toFree),
-                    clean,
-                    Bundle.DESC_ABANDONED_USERDIR(ver.first(), ver.second(), toFree),
-                    cleanupListener);
-            CLEANUP_TASKS.put(cleanupListener, nf);
-        }
-    };
+            if (getUserDir(name) != null) {
+                ActionListener cleanupListener = cleanupAction(name, Bundle.TXT_CONFIRM_CLEANUP(name));
+                Notification nf = NotificationDisplayer.getDefault().notify(
+                        Bundle.TIT_ABANDONED_USERDIR(name, age, toFree),
+                        clean,
+                        Bundle.DESC_ABANDONED_USERDIR(name, age, toFree),
+                        cleanupListener);
 
-    @Messages({
-        "TIT_CONFIRM_CLEANUP=Confirm Cleanup",
-        "# {0} - the dirname to be cleaned up",
-        "TXT_CONFIRM_CLEANUP=Remove user and cache data for NetBeans {0}?",
-        "# {0} - the dirname to be cleaned up",
-        "LBL_CLEANUP=Removing user and cache dirs of {0}"
-    })
-    static ActionListener cleanupAction(String name) {
+                CLEANUP_TASKS.put(cleanupListener, nf);
+            } else {
+                if (isAutoRemoveAbanconedCache()) {
+                    JANITOR_RP.post(() -> cleanup(name));
+                } else {
+                    ActionListener cleanupListener = cleanupAction(name, Bundle.TXT_CONFIRM_CACHE_CLEANUP(name));
+                    Notification nf = NotificationDisplayer.getDefault().notify(
+                            Bundle.TIT_ABANDONED_CACHEDIR(name, toFree),
+                            clean,
+                            Bundle.DESC_ABANDONED_CACHEDIR(name, toFree),
+                            cleanupListener);
+                    CLEANUP_TASKS.put(cleanupListener, nf);
+                }
+            }
+        }        
+    }
+    
+    static ActionListener cleanupAction(String name, String label) {
         return new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent evt) {
-                JanitorPanel panel = new JanitorPanel(Bundle.TXT_CONFIRM_CLEANUP(name));
+                JanitorPanel panel = new JanitorPanel(label);
                 DialogDescriptor descriptor = new DialogDescriptor(
                         panel,
                         Bundle.TIT_CONFIRM_CLEANUP(),
@@ -117,13 +154,7 @@ public class Janitor {
                         null
                 );
                 if (DialogDescriptor.YES_OPTION == DialogDisplayer.getDefault().notify(descriptor)) {
-                    JANITOR_RP.post(() -> {
-                        try (ProgressHandle handle = ProgressHandle.createHandle(Bundle.LBL_CLEANUP(name))){
-                            handle.start();
-                            deleteDir(getUserDir(name));
-                            deleteDir(getCacheDir(name));
-                        }
-                    });
+                    JANITOR_RP.post(() -> cleanup(name));
                 }
                 Janitor.setEnabled(panel.isEnabledOnStartup());
                 Notification nf = CLEANUP_TASKS.get(this);
@@ -134,6 +165,14 @@ public class Janitor {
         };
     }
 
+    static void cleanup(String name) {
+        try (ProgressHandle handle = ProgressHandle.createHandle(Bundle.LBL_CLEANUP(name))){
+            handle.start();
+            deleteDir(getUserDir(name));
+            deleteDir(getCacheDir(name));
+        }        
+    }
+    
     public static final Preferences getPreferences() {
         return NbPreferences.forModule(Janitor.class);
     }
@@ -145,14 +184,14 @@ public class Janitor {
         public void run() {
             if (isEnabled()) {
                 // Starting delayed, not to interfere with other startup IO operations
-                JANITOR_RP.post(SCAN_FOR_JUNK, 60_000);
+                JANITOR_RP.post(Janitor::scanForJunk, 60_000);
             }
         }
 
     }
 
     static void runNow() {
-        JANITOR_RP.post(SCAN_FOR_JUNK);
+        JANITOR_RP.post(Janitor::scanForJunk);
     }
 
     static File getUserDir(String version) {
@@ -177,7 +216,7 @@ public class Janitor {
     }
 
     static void deleteDir(File dir) {
-        if (dir == null) return;
+        if ((dir == null) || !dir.exists()) return;
         Path path = dir.toPath();
         try {
             Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
@@ -233,10 +272,12 @@ public class Janitor {
     static List<Pair<String, Integer>> getOtherVersions() {
         File userDir = Places.getUserDirectory();
         List<Pair<String, Integer>> ret = new LinkedList<>();
+        Set<String> availableUserDirs = new HashSet<>();
         Instant now = Instant.now();
         if (userDir != null) {
             File userParent = userDir.getParentFile();
             for (File f : userParent.listFiles()) {
+                availableUserDirs.add(f.getName());
                 Path logFile = new File(f, LOGFILE_NAME).toPath();
                 if (!f.equals(userDir) && Files.isRegularFile(logFile)) {
                     try {
@@ -247,6 +288,25 @@ public class Janitor {
                         }
                     } catch (IOException ex) {
                         //Just ignore what we can't process
+                    }
+                }
+            }
+        }
+
+        //Search for abandoned cache dirs (cache dirs with no user dir)
+        File cacheDir = Places.getCacheDirectory();
+        if (cacheDir != null) {
+            File cacheParent = cacheDir.getParentFile();
+            for (File f : cacheParent.listFiles()) {
+                if (f.isDirectory() && !availableUserDirs.contains(f.getName())) {
+                    if (new File(f, ALL_CHECKSUM_NAME).exists() && !cacheDir.equals(f)) {
+                        try {
+                            Instant lastModified = Files.getLastModifiedTime(f.toPath()).toInstant();
+                            Integer age = (int) Duration.between(lastModified, now).toDays();
+                            ret.add(Pair.of(f.getName(), age));
+                        } catch (IOException ex) {
+                            //Just ignore what we can't process
+                        }
                     }
                 }
             }
@@ -268,6 +328,14 @@ public class Janitor {
 
     static int getUnusedDays() {
         return getPreferences().getInt(PROP_UNUSED_DAYS, UNUSED_DAYS);
+    }
+
+    static boolean isAutoRemoveAbanconedCache() {
+        return getPreferences().getBoolean(PROP_AUTO_REMOVE_ABANDONED_CACHE, true);
+    }
+
+    static void setAutoRemoveAbanconedCache(boolean b) {
+        getPreferences().putBoolean(PROP_AUTO_REMOVE_ABANDONED_CACHE, b);
     }
 
 }

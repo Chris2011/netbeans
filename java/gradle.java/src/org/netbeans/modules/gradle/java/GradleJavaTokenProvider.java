@@ -19,10 +19,10 @@
 
 package org.netbeans.modules.gradle.java;
 
-import org.netbeans.modules.gradle.api.NbGradleProject;
 import org.netbeans.modules.gradle.api.execute.RunUtils;
 import org.netbeans.modules.gradle.java.api.GradleJavaProject;
 import org.netbeans.modules.gradle.java.api.GradleJavaSourceSet;
+import static org.netbeans.modules.gradle.java.api.GradleJavaSourceSet.SourceType.*;
 import org.netbeans.modules.gradle.spi.actions.ReplaceTokenProvider;
 import java.io.File;
 import java.util.Arrays;
@@ -32,7 +32,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.netbeans.api.project.Project;
-import org.netbeans.spi.project.ProjectServiceProvider;
 import org.netbeans.spi.project.SingleMethod;
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
@@ -42,14 +41,15 @@ import org.openide.util.Lookup;
  *
  * @author Laszlo Kishalmi
  */
-@ProjectServiceProvider(service = ReplaceTokenProvider.class, projectType = NbGradleProject.GRADLE_PLUGIN_TYPE + "/java-base")
 public class GradleJavaTokenProvider implements ReplaceTokenProvider {
 
-    private static final String SELECTED_CLASS      = "selectedClass";     //NOI18N
-    private static final String SELECTED_CLASS_NAME = "selectedClassName"; //NOI18N
-    private static final String SELECTED_PACKAGE    = "selectedPackage";   //NOI18N
-    private static final String SELECTED_METHOD     = "selectedMethod";    //NOI18N
-    private static final String AFFECTED_BUILD_TASK = "affectedBuildTasks";//NOI18N
+    private static final String SELECTED_CLASS       = "selectedClass";     //NOI18N
+    private static final String SELECTED_CLASS_NAME  = "selectedClassName"; //NOI18N
+    private static final String SELECTED_PACKAGE     = "selectedPackage";   //NOI18N
+    private static final String SELECTED_METHOD      = "selectedMethod";    //NOI18N
+    private static final String AFFECTED_BUILD_TASK  = "affectedBuildTasks";//NOI18N
+    private static final String TEST_TASK_NAME       = "testTaskName";      //NOI18N
+    private static final String CLEAN_TEST_TASK_NAME = "cleanTestTaskName"; //NOI18N
 
     private static final Set<String> SUPPORTED = Collections.unmodifiableSet(new HashSet<String>(Arrays.asList(
             SELECTED_CLASS,
@@ -76,6 +76,7 @@ public class GradleJavaTokenProvider implements ReplaceTokenProvider {
         processSelectedPackageAndClass(ret, context);
         processSelectedMethod(ret, context);
         processSourceSets(ret, context);
+        processTestSourceSet(ret, context);
         return ret;
     }
 
@@ -137,15 +138,29 @@ public class GradleJavaTokenProvider implements ReplaceTokenProvider {
             GradleJavaSourceSet sourceSet = gjp.containingSourceSet(f);
             if (sourceSet != null) {
                 String relPath = sourceSet.relativePath(f);
-                ret = (relPath.lastIndexOf('.') > 0 ?
-                        relPath.substring(0, relPath.lastIndexOf('.')) :
-                        relPath).replace('/', '.');
-                if (fo.isFolder()) {
-                    ret = ret + '*';
+                if (relPath != null) {
+                    ret = (relPath.lastIndexOf('.') > 0 ?
+                            relPath.substring(0, relPath.lastIndexOf('.')) :
+                            relPath).replace('/', '.');
+                    if (fo.isFolder()) {
+                        ret = ret + '*';
+                    }
                 }
             }
         }
         return ret;
     }
 
+    private void processTestSourceSet(final Map<String, String> map, Lookup context) {
+        FileObject fo = RunUtils.extractFileObjectfromLookup(context);
+        GradleJavaProject gjp = GradleJavaProject.get(project);
+        if ((gjp != null) && (fo != null)) {
+            File f = FileUtil.toFile(fo);
+            GradleJavaSourceSet sourceSet = gjp.containingSourceSet(f);
+            if (sourceSet != null && sourceSet.isTestSourceSet() && sourceSet.getSourceType(f) != RESOURCES) {
+                map.put(TEST_TASK_NAME, sourceSet.getName());
+                map.put(CLEAN_TEST_TASK_NAME, sourceSet.getTaskName("clean", null));
+            }
+        }
+    }
 }

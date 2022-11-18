@@ -386,6 +386,14 @@ NOWDOC_CHARS=({NEWLINE}*(([^a-zA-Z_\x7f-\xff\n\r][^\n\r]*)|({LABEL}[^a-zA-Z0-9_\
     return createFullSymbol(ASTPHP5Symbols.T_RETURN);
 }
 
+// NETBEANS-4443 PHP 8.0: Attribute Syntax
+// https://wiki.php.net/rfc/attributes_v2
+// https://wiki.php.net/rfc/shorter_attribute_syntax
+// https://wiki.php.net/rfc/shorter_attribute_syntax_change
+<ST_IN_SCRIPTING>"#[" {
+    return createSymbol(ASTPHP5Symbols.T_ATTRIBUTE);
+}
+
 <ST_IN_SCRIPTING>"yield"{WHITESPACE}+"from" {
     return createSymbol(ASTPHP5Symbols.T_YIELD_FROM);
 }
@@ -526,6 +534,16 @@ NOWDOC_CHARS=({NEWLINE}*(([^a-zA-Z_\x7f-\xff\n\r][^\n\r]*)|({LABEL}[^a-zA-Z0-9_\
     return createFullSymbol(ASTPHP5Symbols.T_INTERFACE);
 }
 
+<ST_IN_SCRIPTING>"enum"{WHITESPACE}("extends"|"implements") {
+    yypushback(yylength() - 4); // 4: enum length
+    return createFullSymbol(ASTPHP5Symbols.T_STRING);
+}
+
+<ST_IN_SCRIPTING>"enum"{WHITESPACE}[a-zA-Z_\x80-\xff] {
+    yypushback(yylength() - 4); // 4: enum length
+    return createFullSymbol(ASTPHP5Symbols.T_ENUM);
+}
+
 <ST_IN_SCRIPTING>"extends" {
     return createFullSymbol(ASTPHP5Symbols.T_EXTENDS);
 }
@@ -572,6 +590,18 @@ NOWDOC_CHARS=({NEWLINE}*(([^a-zA-Z_\x7f-\xff\n\r][^\n\r]*)|({LABEL}[^a-zA-Z0-9_\
 
 <ST_IN_SCRIPTING>"::" {
     return createSymbol(ASTPHP5Symbols.T_PAAMAYIM_NEKUDOTAYIM);
+}
+
+<ST_IN_SCRIPTING>"namespace"("\\"{LABEL})+ {
+    return createFullSymbol(ASTPHP5Symbols.T_NAME_RELATIVE);
+}
+
+<ST_IN_SCRIPTING>{LABEL}("\\"{LABEL})+ {
+    return createFullSymbol(ASTPHP5Symbols.T_NAME_QUALIFIED);
+}
+
+<ST_IN_SCRIPTING>"\\"{LABEL}("\\"{LABEL})* {
+    return createFullSymbol(ASTPHP5Symbols.T_NAME_FULLY_QUALIFIED);
 }
 
 <ST_IN_SCRIPTING>"\\" {
@@ -693,6 +723,10 @@ NOWDOC_CHARS=({NEWLINE}*(([^a-zA-Z_\x7f-\xff\n\r][^\n\r]*)|({LABEL}[^a-zA-Z0-9_\
 
 <ST_IN_SCRIPTING>"public" {
     return createFullSymbol(ASTPHP5Symbols.T_PUBLIC);
+}
+
+<ST_IN_SCRIPTING>"readonly" {
+    return createFullSymbol(ASTPHP5Symbols.T_READONLY);
 }
 
 <ST_IN_SCRIPTING>"unset" {
@@ -843,6 +877,11 @@ NOWDOC_CHARS=({NEWLINE}*(([^a-zA-Z_\x7f-\xff\n\r][^\n\r]*)|({LABEL}[^a-zA-Z0-9_\
     return createSymbol(ASTPHP5Symbols.T_COALESCE_EQUAL);
 }
 
+<ST_IN_SCRIPTING>"&"{TABS_AND_SPACES}("$"|"...") {
+    yypushback(yylength() - 1);
+    return createSymbol(ASTPHP5Symbols.T_REFERENCE);
+}
+
 // TOKENS
 <ST_IN_SCRIPTING> {
     ";"                     {return createSymbol(ASTPHP5Symbols.T_SEMICOLON);}
@@ -855,7 +894,7 @@ NOWDOC_CHARS=({NEWLINE}*(([^a-zA-Z_\x7f-\xff\n\r][^\n\r]*)|({LABEL}[^a-zA-Z0-9_\
     ")"                     {return createSymbol(ASTPHP5Symbols.T_CLOSE_PARENTHESE);}
     "|"                     {return createSymbol(ASTPHP5Symbols.T_OR);}
     "^"                     {return createSymbol(ASTPHP5Symbols.T_KOVA);}
-    "&"                     {return createSymbol(ASTPHP5Symbols.T_REFERENCE);}
+    "&"                     {return createSymbol(ASTPHP5Symbols.T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG);}
     "+"                     {return createSymbol(ASTPHP5Symbols.T_PLUS);}
     "-"                     {return createSymbol(ASTPHP5Symbols.T_MINUS);}
     "/"                     {return createSymbol(ASTPHP5Symbols.T_DIV);}

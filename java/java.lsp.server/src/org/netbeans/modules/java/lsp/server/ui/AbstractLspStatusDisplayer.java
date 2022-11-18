@@ -19,9 +19,9 @@
 package org.netbeans.modules.java.lsp.server.ui;
 
 import javax.swing.event.ChangeListener;
-import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.netbeans.modules.java.lsp.server.protocol.ShowStatusMessageParams;
+import org.netbeans.modules.java.lsp.server.protocol.UIContext;
 import org.openide.awt.StatusDisplayer;
 
 public abstract class AbstractLspStatusDisplayer extends StatusDisplayer {
@@ -50,10 +50,10 @@ public abstract class AbstractLspStatusDisplayer extends StatusDisplayer {
         final MessageType type;
         if (importance >= IMPORTANCE_ANNOTATION) {
             type = MessageType.Info;
-        } else if (importance >= IMPORTANCE_ERROR_HIGHLIGHT) {
-            type = MessageType.Error;
         } else if (importance >= IMPORTANCE_FIND_OR_REPLACE) {
             type = MessageType.Info;
+        } else if (importance >= IMPORTANCE_ERROR_HIGHLIGHT) {
+            type = MessageType.Error;
         } else {
             type = MessageType.Info;
         }

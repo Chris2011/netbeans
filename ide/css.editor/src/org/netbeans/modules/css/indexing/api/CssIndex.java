@@ -309,13 +309,7 @@ public class CssIndex {
         String keyName = type.getIndexKey();
         Map<FileObject, Collection<String>> map = new HashMap<>();
         try {
-            Collection<? extends IndexResult> results;
-            if(prefix.length() == 0) {
-                results = querySupport.query(keyName, "", QuerySupport.Kind.PREFIX, keyName);
-            } else {
-                String searchExpression = ".*("+encodeValueForRegexp(prefix)+").*"; //NOI18N
-                results = querySupport.query(keyName, searchExpression, QuerySupport.Kind.REGEXP, keyName);
-            }
+            Collection<? extends IndexResult> results = querySupport.query(keyName, prefix, QuerySupport.Kind.PREFIX, keyName);
             for (IndexResult result : results) {
                 String[] elements = result.getValues(keyName);
                 for(String e : elements) {
@@ -380,8 +374,8 @@ public class CssIndex {
      *
      * @param type
      * @param value
-     * @return returns a collection of files which contains the keyName key and the
-     * value matches the value regular expression
+     * @return returns a collection of files which contains elements with the
+     * given name and with the given type
      */
     public Collection<FileObject> find(RefactoringElementType type, String value) {
         return find(type, value, true);
@@ -391,13 +385,11 @@ public class CssIndex {
         String keyName = type.getIndexKey();
         try {
             StringBuilder searchExpression = new StringBuilder();
-            searchExpression.append(".*("); //NOI18N
             searchExpression.append(encodeValueForRegexp(value));
             if(includeVirtualElements) {
                 searchExpression.append(CssIndexer.VIRTUAL_ELEMENT_MARKER);
                 searchExpression.append('?'); //!?
             }
-            searchExpression.append(")[,;].*"); //NOI18N
 
             Collection<FileObject> matchedFiles = new LinkedList<>();
             Collection<? extends IndexResult> results = querySupport.query(keyName, searchExpression.toString(), QuerySupport.Kind.REGEXP, keyName);
@@ -492,8 +484,9 @@ public class CssIndex {
         if(LOGGER.isLoggable(Level.FINE)) {
             StringBuilder deps = new StringBuilder();
             deps.append("dest2source:\n");
-            for(FileObject dest : allDepsCache.dest2source.keySet()) {
-                Collection<FileReference> source = allDepsCache.dest2source.get(dest);
+            for(Map.Entry<FileObject, Collection<FileReference>> entry : allDepsCache.dest2source.entrySet()) {
+                FileObject dest = entry.getKey();
+                Collection<FileReference> source = entry.getValue();
                 deps.append(dest.getNameExt());
                 deps.append("->");
                 for(FileReference fref : source) {
@@ -503,8 +496,9 @@ public class CssIndex {
                 deps.append('\n');
             }
             deps.append("source2dest:\n");
-            for(FileObject source : allDepsCache.source2dest.keySet()) {
-                Collection<FileReference> dest = allDepsCache.source2dest.get(source);
+            for(Map.Entry<FileObject, Collection<FileReference>> entry : allDepsCache.source2dest.entrySet()) {
+                FileObject source = entry.getKey();
+                Collection<FileReference> dest = entry.getValue();
                 deps.append(source.getNameExt());
                 deps.append("->");
                 for(FileReference fref : dest) {

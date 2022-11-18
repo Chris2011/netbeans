@@ -22,7 +22,7 @@ package org.netbeans.modules.gradle.spi;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.netbeans.api.annotations.common.NonNull;
@@ -57,19 +58,25 @@ public final class GradleFiles implements Serializable {
         PROJECT_PROPERTIES,
         ROOT_PROPERTIES,
         /** @since 2.4 */
-        BUILD_SRC;
+        BUILD_SRC,
+        /** @since 2.25 */
+        VERSION_CATALOG;
 
         public static final Set<Kind> SCRIPTS = EnumSet.of(ROOT_SCRIPT, BUILD_SCRIPT, SETTINGS_SCRIPT, BUILD_SRC);
         public static final Set<Kind> PROPERTIES = EnumSet.of(USER_PROPERTIES, PROJECT_PROPERTIES, ROOT_PROPERTIES);
-        public static final Set<Kind> PROJECT_FILES = EnumSet.of(ROOT_SCRIPT, BUILD_SCRIPT, SETTINGS_SCRIPT, PROJECT_PROPERTIES, ROOT_PROPERTIES);
+        public static final Set<Kind> PROJECT_FILES = EnumSet.of(ROOT_SCRIPT, BUILD_SCRIPT, SETTINGS_SCRIPT, VERSION_CATALOG, PROJECT_PROPERTIES, ROOT_PROPERTIES);
     }
 
+    private static final Logger LOG = Logger.getLogger(GradleFiles.class.getName());
+    
     public static final String SETTINGS_FILE_NAME     = "settings.gradle"; //NOI18N
     public static final String SETTINGS_FILE_NAME_KTS = "settings.gradle.kts"; //NOI18N
     public static final String BUILD_FILE_NAME        = "build.gradle"; //NOI18N
     public static final String BUILD_FILE_NAME_KTS    = "build.gradle.kts"; //NOI18N
     public static final String GRADLE_PROPERTIES_NAME = "gradle.properties"; //NOI18N
     public static final String WRAPPER_PROPERTIES     = "gradle/wrapper/gradle-wrapper.properties"; //NOI18N
+    /** @since 2.25 */
+    public static final String VERSION_CATALOG        = "gradle/libs.versions.toml"; //NOI18N
 
     final File projectDir;
     final boolean knownProject;
@@ -85,6 +92,7 @@ public final class GradleFiles implements Serializable {
     }
     
     public GradleFiles(File dir, boolean knownProject) {
+        LOG.fine("Gradle Files for: " + dir.getAbsolutePath());
         this.knownProject = knownProject;
         try {
             dir = dir.getCanonicalFile();
@@ -101,7 +109,7 @@ public final class GradleFiles implements Serializable {
         List<File> ret = new ArrayList<>(3);
         for (Kind kind:Kind.PROPERTIES){
             File f = getFile(kind);
-            if (f.exists()){
+            if ((f != null) && f.exists()){
                 ret.add(f);
             }
         }
@@ -171,6 +179,12 @@ public final class GradleFiles implements Serializable {
         return settingsScript;
     }
 
+    /**
+     * The list of the existing property files in the current project in
+     * the order of: user, root, and project properties.
+     *
+     * @return the list of existing project property files.
+     */
     public List<File> getPropertyFiles() {
         return searchPropertyFiles();
     }
@@ -206,7 +220,7 @@ public final class GradleFiles implements Serializable {
     }
 
     public boolean isRootProject() {
-        return (buildScript != null) && rootDir.equals(projectDir);
+        return isProject() && rootDir.equals(projectDir);
     }
 
     public boolean isSubProject() {
@@ -218,11 +232,17 @@ public final class GradleFiles implements Serializable {
     }
 
     public boolean isProject() {
-        boolean ret = knownProject || (buildScript != null);
-        if (!ret && (settingsScript != null)) {
-            ret = SettingsFile.getSubProjects(settingsScript).contains(projectDir);
+        if (knownProject || buildScript != null) {
+            return true;
         }
-        return ret;
+        if (settingsScript != null) {
+            if (projectDir.equals(settingsScript.getParentFile())) {
+                return true;
+            }
+            Set<File> parsed = SettingsFile.getSubProjects(settingsScript);
+            return parsed.contains(projectDir); 
+        }
+        return false;
     }
 
     /**
@@ -251,10 +271,11 @@ public final class GradleFiles implements Serializable {
     }
 
     /**
-     * Returns the possible file names for a Gradle project file,
+     * Returns the possible file names for a Gradle project file, or
+     * {@code null} if that kind is not accepted in the project context.
      *
      * @param kind The role of the project file.
-     * @return
+     * @return a possible project file or {@code null}
      */
     public File getFile(Kind kind) {
         if (isBuildSrcProject()) {
@@ -283,10 +304,11 @@ public final class GradleFiles implements Serializable {
                     return new File(projectDir, GRADLE_PROPERTIES_NAME);
                 case ROOT_PROPERTIES:
                     return new File(rootDir, GRADLE_PROPERTIES_NAME);
-                case USER_PROPERTIES: {
+                case USER_PROPERTIES: 
                     File guh = GradleSettings.getDefault().getGradleUserHome();
                     return new File(guh, GRADLE_PROPERTIES_NAME);
-                }
+                case VERSION_CATALOG:
+                    return new File(rootDir, VERSION_CATALOG);
                 case BUILD_SRC:
                     return new File(rootDir, "buildSrc"); //NOI18N
                 default:
@@ -350,7 +372,7 @@ public final class GradleFiles implements Serializable {
             Map<String, String> projectPaths = new HashMap<>();
             String rootDir = f.getParentFile().getAbsolutePath();
             try {
-                List<String> lines = Files.readAllLines(f.toPath(), Charset.forName("UTF-8")); //NOI18N
+                List<String> lines = Files.readAllLines(f.toPath(), StandardCharsets.UTF_8);
                 for (String line : lines) {
                     line = line.trim();
                     if (!line.startsWith("//")) { //NOI18N

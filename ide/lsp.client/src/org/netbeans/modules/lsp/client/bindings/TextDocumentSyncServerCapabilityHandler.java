@@ -216,7 +216,7 @@ public class TextDocumentSyncServerCapabilityHandler {
                                     });
                                 }
                             }
-                            server.scheduleBackgroundTasks(file);
+                            LSPBindings.scheduleBackgroundTasks(file);
                         });
                     } catch (BadLocationException ex) {
                         Exceptions.printStackTrace(ex);
@@ -308,7 +308,7 @@ public class TextDocumentSyncServerCapabilityHandler {
                                                                      text[0]);
 
             server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(textDocumentItem));
-            server.scheduleBackgroundTasks(file);
+            LSPBindings.scheduleBackgroundTasks(file);
         });
     }
 
@@ -335,6 +335,11 @@ public class TextDocumentSyncServerCapabilityHandler {
                     BreadcrumbsImpl bi = new BreadcrumbsImpl(c);
                     LSPBindings.addBackgroundTask(file, bi);
                     c.putClientProperty(BreadcrumbsImpl.class, bi);
+                }
+                if (c.getClientProperty(SemanticHighlight.class) == null) {
+                    SemanticHighlight sh = new SemanticHighlight(c);
+                    LSPBindings.addBackgroundTask(file, sh);
+                    c.putClientProperty(SemanticHighlight.class, sh);
                 }
             });
         });

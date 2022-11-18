@@ -43,36 +43,12 @@ public class HintsTest extends PHPHintsTestBase {
         return inputFile;
     }
 
-    public void testModifiersCheckHint() throws Exception {
-        checkHints(new ModifiersCheckHintError(), "testModifiersCheckHint.php");
-    }
-
     public void testAbstractClassInstantiationHint() throws Exception {
         checkHints(new AbstractClassInstantiationHintError(), "testAbstractClassInstantiationHint.php");
     }
 
     public void testAbstractClassInstantiationHint_02() throws Exception {
         checkHints(new AbstractClassInstantiationHintError(), "testAbstractClassInstantiationHint_02.php");
-    }
-
-    public void testMethodRedeclarationHint() throws Exception {
-        checkHints(new MethodRedeclarationHintError(), "testMethodRedeclarationHint.php");
-    }
-
-    public void testTypeRedeclarationHint() throws Exception {
-        checkHints(new TypeRedeclarationHintError(), "testTypeRedeclarationHint.php");
-    }
-
-    public void testFieldRedeclarationHint() throws Exception {
-        checkHints(new FieldRedeclarationHintError(), "testFieldRedeclarationHint.php");
-    }
-
-    public void testConstantRedeclarationHint() throws Exception {
-        checkHints(new ConstantRedeclarationHintError(), "testConstantRedeclarationHint.php");
-    }
-
-    public void testWrongOrderOfArgsHint() throws Exception {
-        checkHints(new WrongOrderOfArgsHint(), "testWrongOrderOfArgsHint.php");
     }
 
     public void testUnusedUsesHint() throws Exception {
@@ -346,10 +322,6 @@ public class HintsTest extends PHPHintsTestBase {
         checkHints(new ErrorControlOperatorHint(), "testErrorControlOperatorHint.php");
     }
 
-    public void testIssue226494() throws Exception {
-        checkHints(new MethodRedeclarationHintError(), "testIssue226494.php");
-    }
-
     public void testClosingDelimUseCase01() throws Exception {
         checkHints(new UnnecessaryClosingDelimiterHint(), "testClosingDelimUseCase01.php");
     }
@@ -478,30 +450,6 @@ public class HintsTest extends PHPHintsTestBase {
         applyHint(new EmptyStatementHint(), "testIssue259026_03.php", "$test1 = 1;;^", "Empty Statement");
     }
 
-    public void testIssue268557() throws Exception {
-        checkHints(new FieldRedeclarationHintError(), "testIssue268557.php");
-    }
-
-    public void testConstantModifiersCheckHint() throws Exception {
-        checkHints(new ModifiersCheckHintError(), "testConstantModifiersCheckHint.php");
-    }
-
-    public void testConstantModifiersCheckFix_01() throws Exception {
-        applyHint(new ModifiersCheckHintError(), "testConstantModifiersCheckFix.php", "private const PRIVATE_INT^ERFACE_CONST = 2;", "Remove modifier");
-    }
-
-    public void testConstantModifiersCheckFix_02() throws Exception {
-        applyHint(new ModifiersCheckHintError(), "testConstantModifiersCheckFix.php", "protected const P^ROTECTED_INTERFACE_CONST = 3;", "Remove modifier");
-    }
-
-    public void testVoidReturnTypeHint_01() throws Exception {
-        checkHints(new ReturnTypeHintErrorStub(PhpVersion.PHP_70), "testVoidReturnTypeHint.php");
-    }
-
-    public void testVoidReturnTypeHint_02() throws Exception {
-        checkHints(new ReturnTypeHintErrorStub(PhpVersion.PHP_71), "testVoidReturnTypeHint.php");
-    }
-
     public void testDeclareStrictTypes_01a() throws Exception {
         checkHints(new DeclareStrictTypesSuggestionStub(PhpVersion.PHP_70), "testDeclareStrictTypesSuggestion_01.php", "^<?php");
     }
@@ -550,16 +498,6 @@ public class HintsTest extends PHPHintsTestBase {
         applyHint(new DeclareStrictTypesSuggestionStub(PhpVersion.PHP_71), "testDeclareStrictTypesSuggestion_03.php", "<?p^hp", "Add declare(strict_types=1)");
     }
 
-    public void testFieldRedeclarationTypedProperties20Hint_01() throws Exception {
-        // PHP 7.4
-        checkHints(new FieldRedeclarationHintError(), "testFieldRedeclarationTypedProperties20Hint_01.php");
-    }
-
-    public void testFieldRedeclarationTypedProperties20Hint_02() throws Exception {
-        // PHP 7.4
-        checkHints(new FieldRedeclarationHintError(), "testFieldRedeclarationTypedProperties20Hint_02.php");
-    }
-
     private void fixContent(File file) throws Exception {
         Path path = file.toPath();
         Charset charset = StandardCharsets.UTF_8;
@@ -582,21 +520,6 @@ public class HintsTest extends PHPHintsTestBase {
         @Override
         protected boolean isAtLeastPhp54(FileObject fileObject) {
             return phpVersion.compareTo(PhpVersion.PHP_54) >= 0;
-        }
-
-    }
-
-    private static final class ReturnTypeHintErrorStub extends ReturnTypeHintError {
-
-        private final PhpVersion phpVersion;
-
-        public ReturnTypeHintErrorStub(PhpVersion phpVersion) {
-            this.phpVersion = phpVersion;
-        }
-
-        @Override
-        protected PhpVersion getPhpVersion(FileObject file) {
-            return phpVersion;
         }
 
     }

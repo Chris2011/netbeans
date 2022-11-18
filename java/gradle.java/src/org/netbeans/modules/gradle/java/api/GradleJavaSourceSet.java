@@ -20,6 +20,7 @@
 package org.netbeans.modules.gradle.java.api;
 
 import org.netbeans.modules.gradle.spi.Utils;
+
 import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Path;
@@ -33,7 +34,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+
 import static org.openide.util.NbBundle.Messages;
 
 public final class GradleJavaSourceSet implements Serializable {
@@ -42,6 +45,7 @@ public final class GradleJavaSourceSet implements Serializable {
         "LBL_JAVA=Java",
         "LBL_GROOVY=Groovy",
         "LBL_SCALA=Scala",
+        "LBL_KOTLIN=Kotlin",
         "LBL_RESOURCES=Resources",
         "LBL_GENERATED=Generated"
     })
@@ -49,7 +53,9 @@ public final class GradleJavaSourceSet implements Serializable {
 
         JAVA, GROOVY, SCALA, RESOURCES,
         /** @since 1.8 */
-        GENERATED;
+        GENERATED,
+        /** @since 1.15 */
+        KOTLIN;
 
         @Override
         public String toString() {
@@ -57,6 +63,7 @@ public final class GradleJavaSourceSet implements Serializable {
                 case JAVA: return Bundle.LBL_JAVA();
                 case GROOVY: return Bundle.LBL_GROOVY();
                 case SCALA: return Bundle.LBL_SCALA();
+                case KOTLIN: return Bundle.LBL_KOTLIN();
                 case RESOURCES: return Bundle.LBL_RESOURCES();
                 case GENERATED: return Bundle.LBL_GENERATED();
             }
@@ -74,6 +81,7 @@ public final class GradleJavaSourceSet implements Serializable {
     private static final String DEFAULT_SOURCE_COMPATIBILITY = "1.5"; //NOI18N
 
     Map<SourceType, Set<File>> sources = new EnumMap<>(SourceType.class);
+    Map<SourceType, File> outputs = new EnumMap<>(SourceType.class);
     String name;
     String runtimeConfigurationName;
     String compileConfigurationName;
@@ -129,7 +137,7 @@ public final class GradleJavaSourceSet implements Serializable {
      * @return the defined source compatibility or "1.5"
      */
     public String getSourcesCompatibility(SourceType type) {
-        return sourcesCompatibility.getOrDefault(type, DEFAULT_SOURCE_COMPATIBILITY);
+        return fixJavaCompatibility(type, "-source", sourcesCompatibility).orElse(DEFAULT_SOURCE_COMPATIBILITY);
     }
 
     /**
@@ -157,13 +165,54 @@ public final class GradleJavaSourceSet implements Serializable {
      * @return the defined target compatibility
      */
     public String getTargetCompatibility(SourceType type) {
-        return targetCompatibility.getOrDefault(type, getSourcesCompatibility(type));
+        return fixJavaCompatibility(type, "-target", targetCompatibility).orElse(getSourcesCompatibility(type));
     }
 
+    /**
+     * Use compiler arguments to override source/target compatibility for JAVA.
+     * Look for something like "-flag" or "--flag" in args, the last occurrence;
+     * return  it if found.
+     * <br>
+     * For example for source, flag is "-source", and args is
+     * "... --source 13 ..." then return "13". If not in args
+     * then don't change the compatibility, return the current value.
+     */
+    private Optional<String> fixJavaCompatibility(SourceType sourceType, String flag, Map<SourceType, String> compatibilityMap) {
+        String compatibility = compatibilityMap.get(sourceType);
+        if(sourceType == SourceType.JAVA) { // only fixup for java
+            List<String> args = getCompilerArgs(sourceType);
+            // index of last occurrence of flag in args, +1 is flag's value
+            int idx = Math.max(args.lastIndexOf(flag), args.lastIndexOf("-" + flag)) + 1;
+            int idx2 = args.lastIndexOf("--release") + 1;
+            if(idx2 > 0) // --release wins; if flag was also set, compile will fail
+                idx = idx2;
+            if(idx > 0 && idx < args.size()) {
+                compatibility = args.get(idx); // note: arg not validated
+            }
+        }
+        return Optional.ofNullable(compatibility);
+    }
+
+    /**
+     * Returns the name of the configuration used by this SourceSet for compile.
+     * This method returns an <code>null</code> from Gradle 7.0 as the
+     * corresponding method has been removed in that version. 
+     * @return the name of the configuration or <code>null</code> if that's not available.
+     * @deprecated No replacement.
+     */
+    @Deprecated
     public String getRuntimeConfigurationName() {
         return runtimeConfigurationName;
     }
 
+    /**
+     * Returns the name of the configuration used by this SourceSet for runtime.
+     * This method returns an <code>null</code> from Gradle 7.0 as the
+     * corresponding method has been removed in that version. 
+     * @return the name of the configuration or <code>null</code> if that's not available.
+     * @deprecated No replacement.
+     */
+    @Deprecated
     public String getCompileConfigurationName() {
         return compileConfigurationName;
     }
@@ -192,6 +241,11 @@ public final class GradleJavaSourceSet implements Serializable {
 
     public final Set<File> getScalaDirs() {
         return getSourceDirs(SourceType.SCALA);
+    }
+
+    /** @since 1.15 */
+    public final Set<File> getKotlinDirs() {
+        return getSourceDirs(SourceType.KOTLIN);
     }
 
     public final Set<File> getResourcesDirs() {
@@ -281,8 +335,9 @@ public final class GradleJavaSourceSet implements Serializable {
      * @return the matching {@link SourceType} or {@code null}.
      */
     public SourceType getSourceType(File f) {
-        for (SourceType type : sources.keySet()) {
-            Set<File> dirs = sources.get(type);
+        for (Map.Entry<SourceType, Set<File>> entry : sources.entrySet()) {
+            SourceType type = entry.getKey();
+            Set<File> dirs = entry.getValue();
             for (File dir : dirs) {
                 if (parentOrSame(f, dir)) {
                     return type;
@@ -304,8 +359,9 @@ public final class GradleJavaSourceSet implements Serializable {
 
     public Set<SourceType> getSourceTypes(File f) {
         Set<SourceType> ret = EnumSet.noneOf(SourceType.class);
-        for (SourceType type : sources.keySet()) {
-            Set<File> dirs = sources.get(type);
+        for (Map.Entry<SourceType, Set<File>> entry : sources.entrySet()) {
+            SourceType type = entry.getKey();
+            Set<File> dirs = entry.getValue();
             for (File dir : dirs) {
                 if (parentOrSame(f, dir)) {
                     ret.add(type);
@@ -337,6 +393,31 @@ public final class GradleJavaSourceSet implements Serializable {
 
     public Set<File> getOutputClassDirs() {
         return outputClassDirs != null ? outputClassDirs : Collections.<File>emptySet();
+    }
+    
+    /**
+     * Represents an unknown value. This is different from a value that is not present,
+     * i.e. an output directory for a language that is not used in the project.
+     * @since 1.19
+     */
+    public static final File UNKNOWN = new File("");
+    
+    /**
+     * Returns output directories for the given source type in the sourceset. Returns
+     * null, if the source type has no output directories. Returns UNKNOWN, if the 
+     * output location is not known.
+     * 
+     * @param srcType language type
+     * @return location or {@code null}.
+     * @since 1.19
+     */
+    public File getOutputClassDir(SourceType srcType) {
+        File f = outputs.get(srcType);
+        if (UNKNOWN.equals(f)) {
+            // make the value canonical, so == can be used.
+            return UNKNOWN;
+        }
+        return f;
     }
 
     /**
@@ -513,6 +594,8 @@ public final class GradleJavaSourceSet implements Serializable {
                 return getCompileTaskName("Groovy"); //NOI18N
             case SCALA:
                 return getCompileTaskName("Scala"); //NOI18N
+            case KOTLIN:
+                return getCompileTaskName("Kotlin"); //NOI18N
         }
         return null;
     }

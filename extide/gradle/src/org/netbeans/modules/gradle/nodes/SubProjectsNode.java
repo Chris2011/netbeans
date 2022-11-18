@@ -26,10 +26,10 @@ import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -38,8 +38,6 @@ import org.netbeans.api.project.Project;
 import org.netbeans.api.project.ProjectManager;
 import org.netbeans.api.project.ui.OpenProjects;
 import org.netbeans.spi.project.ui.LogicalViewProvider;
-import org.openide.filesystems.FileObject;
-import org.openide.filesystems.FileUtil;
 import org.openide.nodes.AbstractNode;
 import org.openide.nodes.ChildFactory;
 import org.openide.nodes.FilterNode;
@@ -49,14 +47,19 @@ import org.openide.util.ImageUtilities;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 import org.openide.util.RequestProcessor;
-import org.openide.util.WeakListeners;
 
 import static org.netbeans.modules.gradle.nodes.Bundle.*;
-import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.prefs.PreferenceChangeListener;
+import java.util.prefs.Preferences;
+import org.netbeans.api.project.ProjectUtils;
+import org.netbeans.modules.gradle.api.GradleBaseProject;
+import org.netbeans.modules.gradle.spi.GradleSettings;
 import org.netbeans.modules.gradle.spi.Utils;
-import org.openide.ErrorManager;
+import org.openide.nodes.Children;
+import org.openide.util.WeakListeners;
 
 /**
  *
@@ -64,13 +67,15 @@ import org.openide.ErrorManager;
  */
 public class SubProjectsNode extends AbstractNode {
 
+    private static final Logger LOG = Logger.getLogger(SubProjectsNode.class.getName());
+    
     @StaticResource
     private static final String SP_BADGE
             = "org/netbeans/modules/gradle/resources/gradle-large-badge.png";
 
     @NbBundle.Messages("LBL_SubProjects=Sub Projects")
     public SubProjectsNode(NbGradleProjectImpl proj, String path) {
-        super(FilterNode.Children.create(new SubProjectsChildFactory(proj, path), true));
+        super(Children.create(new SubProjectsChildFactory(proj), true));
         if (":".equals(path)) {     //NOI18N
             setName("SubProjects"); //NOI18N
             setDisplayName(LBL_SubProjects());
@@ -106,99 +111,110 @@ public class SubProjectsNode extends AbstractNode {
         return getIcon(true);
     }
 
-    private static class SubProjectsChildFactory extends ChildFactory<String> {
+    private static class SubProjectsChildFactory extends ChildFactory<Project> {
 
-        private final NbGradleProjectImpl project;
-        private final PropertyChangeListener listener;
-        private final String rootPath;
+        private final Project project;
+        private final PropertyChangeListener propListener;
+        private final PreferenceChangeListener prefListener;
 
-        SubProjectsChildFactory(NbGradleProjectImpl proj, String rootPath) {
+        SubProjectsChildFactory(Project proj) {
             project = proj;
-            this.rootPath = rootPath;
-            NbGradleProject watcher = project.getProjectWatcher();
-            listener = (PropertyChangeEvent evt) -> {
+            propListener = (PropertyChangeEvent evt) -> {
                 if (NbGradleProject.PROP_PROJECT_INFO.equals(evt.getPropertyName())) {
                     ProjectManager.getDefault().clearNonProjectCache();
                     refresh(false);
                 }
             };
+            NbGradleProject.addPropertyChangeListener(project, WeakListeners.propertyChange(propListener, NbGradleProject.get(project)));
 
-            watcher.addPropertyChangeListener(WeakListeners.propertyChange(listener, watcher));
-
+            prefListener = (evt) -> {
+                if (GradleSettings.PROP_DISPLAY_DESCRIPTION.equals(evt.getKey())) {
+                    refresh(false);
+                }
+            };
+            Preferences prefs = GradleSettings.getDefault().getPreferences();
+            prefs.addPreferenceChangeListener(WeakListeners.create(PreferenceChangeListener.class, prefListener, prefs));
         }
 
         @Override
-        protected boolean createKeys(final List<String> paths) {
-            Map<String, File> subProjects = project.getGradleProject().getBaseProject().getSubProjects();
-            Set<String> components = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-            Set<String> projects = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-            for (String path : subProjects.keySet()) {
-                if (path.startsWith(rootPath)) {
-                    String relPath = path.substring(rootPath.length());
-                    int firstColon = relPath.indexOf(':');
-                    int lastColon = relPath.lastIndexOf(':');
-                    if ((firstColon >= 0) && (firstColon == lastColon)) {
-                        components.add(path.substring(0, rootPath.length() + firstColon + 1));
-                    }
-                    if (firstColon < 0 ) {
-                        projects.add(path);
-                    }
+        protected boolean createKeys(final List<Project> projects) {
+
+            Set<Project> containedProjects = ProjectUtils.getContainedProjects(project, false);
+            if (containedProjects != null) {
+                ArrayList<Project> ret = new ArrayList<>(containedProjects);
+                if (GradleSettings.getDefault().isDisplayDesctiption()) {
+                    ret.sort(Comparator.comparing((Project p) -> ProjectUtils.getInformation(p).getDisplayName()));
+                } else {
+                    ret.sort(Comparator.comparing((Project p) -> ProjectUtils.getInformation(p).getName()));
                 }
+                projects.addAll(ret);
+            } else {
+                LOG.log(Level.FINE, "No ProjectContainerProvider in the lookup of: {0}", project);
             }
-            paths.addAll(components);
-            paths.addAll(projects);
             return true;
         }
 
         @Override
-        protected Node createNodeForKey(String path) {
-            Node ret = null;
-            Map<String, File> subProjects = project.getGradleProject().getBaseProject().getSubProjects();
-            File projectDir = subProjects.get(path);
-            if (projectDir != null) {
-                FileObject fo = FileUtil.toFileObject(projectDir);
-                if (fo != null) {
-                    ret = createSubProjectNode(fo);
-                }
-            } else {
-                ret = new SubProjectsNode(project, path);
+        protected Node createNodeForKey(Project key) {
+            Set<Project> containedProjects = ProjectUtils.getContainedProjects(key, false);
+            if (containedProjects == null) {
+                containedProjects = Collections.emptySet();
+                LOG.log(Level.FINE, "No ProjectContainerProvider in the lookup of: {0}", project);                
             }
-            return ret;
+            GradleBaseProject gbp = GradleBaseProject.get(project);
+            String prefix = (gbp != null && !gbp.isRoot() ? gbp.getPath() : "") + ':';
+            Children ch = containedProjects.isEmpty() ? Children.LEAF : Children.create(new SubProjectsChildFactory(key), true);
+            return createSubProjectNode(key, prefix, ch);
         }
 
     }
 
-    public static Node createSubProjectNode(FileObject fo) {
+    public static Node createSubProjectNode(Project prj) {
+        return createSubProjectNode(prj, null, Children.LEAF);
+    }
+
+    public static Node createSubProjectNode(Project prj, String path, Children children) {
         Node ret = null;
-        try {
-            Project prj = ProjectManager.getDefault().findProject(fo);
-            if (prj != null && prj.getLookup().lookup(NbGradleProjectImpl.class) != null) {
-                NbGradleProjectImpl proj = (NbGradleProjectImpl) prj;
-                assert prj.getLookup().lookup(LogicalViewProvider.class) != null;
-                Node original = proj.getLookup().lookup(LogicalViewProvider.class).createLogicalView();
-                ret = new ProjectFilterNode(proj, original);
-            }
-        } catch (IllegalArgumentException | IOException ex) {
-            ErrorManager.getDefault().notify(ex);
+        if (prj.getLookup().lookup(NbGradleProjectImpl.class) != null) {
+            assert prj.getLookup().lookup(LogicalViewProvider.class) != null;
+            Node original = prj.getLookup().lookup(LogicalViewProvider.class).createLogicalView();
+            ret = new ProjectFilterNode(path, original, children);
         }
         return ret;
     }
 
     public static class ProjectFilterNode extends FilterNode {
 
-        private final NbGradleProjectImpl project;
+        private final String prefix;
 
-        ProjectFilterNode(NbGradleProjectImpl proj, Node original) {
-            super(original, FilterNode.Children.LEAF);
-//            disableDelegation(DELEGATE_GET_ACTIONS);
-            project = proj;
+        ProjectFilterNode(String prefix, Node original, org.openide.nodes.Children children) {
+            super(original, children);
+            this.prefix = prefix;
+        }
+
+        ProjectFilterNode(Node original) {
+            this(null, original, Children.LEAF);
         }
 
         @Override
+        public String getDisplayName() {
+            boolean usePath = super.getName().equals(super.getDisplayName());
+            if (usePath && (prefix != null)) {
+                GradleBaseProject gbp = GradleBaseProject.get(getLookup().lookup(Project.class));
+                if (gbp != null) {
+                    String path = gbp.getPath();
+                    return path.startsWith(prefix)  && path.length() > prefix.length()
+                    ? path.substring(prefix.length())
+                    : path;
+                }
+            }
+            return super.getDisplayName();
+        }
+
+
+        @Override
         public Action[] getActions(boolean b) {
-            ArrayList<Action> lst = new ArrayList<Action>();
-            lst.add(OpenProjectAction.SINGLETON);
-            return lst.toArray(new Action[lst.size()]);
+            return new Action[]{OpenProjectAction.SINGLETON};
         }
 
         @Override

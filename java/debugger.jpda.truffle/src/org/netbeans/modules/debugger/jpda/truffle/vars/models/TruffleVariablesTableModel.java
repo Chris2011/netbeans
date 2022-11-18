@@ -153,7 +153,7 @@ public class TruffleVariablesTableModel implements TableModelFilter, TableHTMLMo
                         CurrentPCInfo currentPCInfo = TruffleAccess.getCurrentPCInfo(debugger.getCurrentThread());
                         if (currentPCInfo != null) {
                             TruffleStackFrame selectedStackFrame = currentPCInfo.getSelectedStackFrame();
-                            frameLanguage = selectedStackFrame.getLanguage();
+                            frameLanguage = selectedStackFrame != null ? selectedStackFrame.getLanguage() : LanguageName.NONE;
                         }
                         LanguageName valueLanguage = tv.getLanguage();
                         if (!LanguageName.NONE.equals(valueLanguage) && !frameLanguage.equals(valueLanguage)) {
@@ -194,9 +194,9 @@ public class TruffleVariablesTableModel implements TableModelFilter, TableHTMLMo
         sb.append(id);
         sb.append("]</font> ");
         
-        text = text.replaceAll("&", "&amp;");
-        text = text.replaceAll("<", "&lt;");
-        text = text.replaceAll(">", "&gt;");
+        text = text.replace("&", "&amp;");
+        text = text.replace("<", "&lt;");
+        text = text.replace(">", "&gt;");
         sb.append(text);
         sb.append("</font>");
         sb.append("</html>");
