@@ -91,7 +91,6 @@ import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.ExtensionContainer;
 import org.gradle.api.plugins.ExtensionsSchema.ExtensionSchema;
-import org.gradle.api.plugins.JavaPlatformPlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.reflect.HasPublicType;
 import org.gradle.api.reflect.TypeOf;
@@ -105,7 +104,7 @@ import org.gradle.jvm.JvmLibrary;
 import org.gradle.language.base.artifact.SourcesArtifact;
 import org.gradle.language.java.artifact.JavadocArtifact;
 import org.gradle.plugin.use.PluginId;
-import org.gradle.util.VersionNumber;
+import org.gradle.util.GradleVersion;
 import org.netbeans.modules.gradle.tooling.internal.NbProjectInfo;
 
 /**
@@ -176,8 +175,9 @@ class NbProjectInfoBuilder {
         "war"
     }));
 
+    private static final GradleVersion GRADLE_VERSION = GradleVersion.current().getBaseVersion();
+
     final Project project;
-    final VersionNumber gradleVersion;
     final GradleInternalAdapter adapter;
 
     public static final class ValueAndType {
@@ -186,7 +186,7 @@ class NbProjectInfoBuilder {
 
         public ValueAndType(Class type, Object value) {
             this.type = type;
-            this.value = Optional.of(value);
+            this.value = Optional.ofNullable(value);
         }
 
         public ValueAndType(Class type) {
@@ -197,9 +197,7 @@ class NbProjectInfoBuilder {
 
     NbProjectInfoBuilder(Project project) {
         this.project = project;
-        this.gradleVersion = VersionNumber.parse(project.getGradle().getGradleVersion());
-        // checked that version 7.6.0 > 7.6.0-rc-1 in the VersionNumber order
-        this.adapter = sinceGradleOrDefault("7.6.0-rc-1", () -> new GradleInternalAdapter.Gradle76(project), () -> new GradleInternalAdapter(project));
+        this.adapter = sinceGradleOrDefault("7.6", () -> new GradleInternalAdapter.Gradle76(project), () -> new GradleInternalAdapter(project));
     }
     
     private NbProjectInfoModel model = new NbProjectInfoModel();
@@ -292,9 +290,7 @@ class NbProjectInfoBuilder {
         Map<String, Object> taskProperties = new HashMap<>();
         Map<String, String> taskPropertyTypes = new HashMap<>();
         
-        Map<String, Task> taskList = project.getTasks().getAsMap();
-        for (String s : taskList.keySet()) {
-            Task task = taskList.get(s);
+        for (Task task : project.getTasks().getAsMap().values()) {
             Class taskClass = task.getClass();
             Class nonDecorated = findNonDecoratedClass(taskClass);
             
@@ -309,9 +305,7 @@ class NbProjectInfoBuilder {
     private void detectTaskDependencies(NbProjectInfoModel model) {
         Map<String, Object> tasks = new HashMap<>();
         
-        Map<String, Task> taskList = project.getTasks().getAsMap();
-        for (String s : taskList.keySet()) {
-            Task task = taskList.get(s);
+        for (Task task : project.getTasks().getAsMap().values()) {
             Map<String, String> taskInfo = new HashMap<>();
             taskInfo.put("name", task.getPath()); // NOI18N
             taskInfo.put("enabled", Boolean.toString(task.getEnabled())); // NOI18N
@@ -332,11 +326,16 @@ class NbProjectInfoBuilder {
     }
     
     private String dependenciesAsString(Task t, TaskDependency td) {
-        Set<? extends Task> deps = td.getDependencies(t);
-        if (deps.isEmpty()) {
+        try {
+            Set<? extends Task> deps = td.getDependencies(t);
+            if (deps.isEmpty()) {
+                return "";
+            }
+            return deps.stream().map(Task::getPath).collect(Collectors.joining(","));
+        } catch (LinkageError | RuntimeException ex) {
+            LOG.warn("Error getting dependencies for task {}: {}", t.getName(), ex.getLocalizedMessage(), ex);
             return "";
         }
-        return deps.stream().map(Task::getPath).collect(Collectors.joining(","));
     }
     
     private void detectConfigurationArtifacts(NbProjectInfoModel model) {
@@ -505,13 +504,7 @@ class NbProjectInfoBuilder {
             return false;
         }
         String n = c.getName();
-        if (n.indexOf('.') == -1) {
-            return true;
-        } else if (n.startsWith("java.lang.")) {
-            return true;
-        }
-        
-        return false;
+        return c.isPrimitive() || n.startsWith("java.lang.");
     }
     
     /**
@@ -687,12 +680,13 @@ class NbProjectInfoBuilder {
                     }
 
                     NamedDomainObjectContainer nc = (NamedDomainObjectContainer)value;
-                    Map<String, ?> m = nc.getAsMap();
+                    Map<String, ?> m = new HashMap<>(nc.getAsMap());
                     List<String> ss = new ArrayList<>(m.keySet());
                     propertyTypes.put(prefix + propName + COLLECTION_KEYS_MARKER, String.join(";;", ss));
-                    for (String k : m.keySet()) {
+                    for (Map.Entry<String, ?> it : m.entrySet()) {
+                        String k = it.getKey();
                         newPrefix = prefix + propName + "." + k + "."; // NOI18N
-                        Object v = m.get(k);
+                        Object v = it.getValue();
                         defaultValues.put(prefix + propName + "." + k, Objects.toString(v)); // NOI18N
                         inspectObjectAndValues(v.getClass(), v, newPrefix, globalTypes, propertyTypes, defaultValues, null, false);
                     }
@@ -864,7 +858,7 @@ class NbProjectInfoBuilder {
         model.getInfo().put("project_subProjects", sp);
         
         Map<String, File> ib = new HashMap<>();
-        LOG.lifecycle("Gradle Version: {}", gradleVersion);
+        LOG.lifecycle("Gradle Version: {}", GradleVersion.current());
         sinceGradle("3.1", () -> {
             for(IncludedBuild p: project.getGradle().getIncludedBuilds()) {
                 LOG.lifecycle("Include Build: {}", p.getName());
@@ -1003,49 +997,55 @@ class NbProjectInfoBuilder {
 
                             List<String> compilerArgs;
 
-                            try {
-                                compilerArgs = (List<String>) getProperty(compileTask, "options", "allCompilerArgs");
-                            } catch (Throwable ex) {
-                                try {
-                                    compilerArgs = (List<String>) getProperty(compileTask, "options", "compilerArgs");
-                                } catch (Throwable ex2) {
-                                    compilerArgs = (List<String>) getProperty(compileTask, "kotlinOptions", "freeCompilerArgs");
-                                }
+                            compilerArgs = (List<String>) getProperty(compileTask, "options", "allCompilerArgs");
+                            if (compilerArgs == null) {
+                                compilerArgs = (List<String>) getProperty(compileTask, "options", "compilerArgs");
+                            }
+                            if (compilerArgs == null) {
+                                compilerArgs = (List<String>) getProperty(compileTask, "kotlinOptions", "freeCompilerArgs");
                             }
                             model.getInfo().put(propBase + lang + "_compiler_args", new ArrayList<>(compilerArgs));
                         }
                         if (Boolean.TRUE.equals(available.get(langId))) {
                             model.getInfo().put(propBase + lang, storeSet(getProperty(sourceSet, langId, "srcDirs")));
-                            DirectoryProperty dirProp = (DirectoryProperty)getProperty(sourceSet, langId, "classesDirectory");
-                            if (dirProp != null) {
-                                File outDir;
-                                
-                                if (dirProp.isPresent()) {
-                                    outDir = dirProp.get().getAsFile();
-                                } else {
-                                    // kotlin plugin uses some weird late binding, so it has the output item, but it cannot be resolved to a 
-                                    // concrete file path at this time. Let's make an approximation from 
-                                    Path candidate = null;
-                                    if (base != null) {
-                                        Path prefix = base.resolve(langId);
-                                        // assume the language has just one output dir in the source set:
-                                        for (int i = 0; i < outPaths.size(); i++) {
-                                            Path p = outPaths.get(i);
-                                            if (p.startsWith(prefix)) {
-                                                if (candidate != null) {
-                                                    candidate = null;
-                                                    break;
-                                                } else {
-                                                    candidate = p;
+                            asGradle("4.0", "6.1", () -> {
+                                File outDir = (File) getProperty(sourceSet, langId, "outputDir");
+                                model.getInfo().put(propBase + lang + "_output_classes", outDir);
+                            });
+                            sinceGradle("6.1", () -> {
+                                DirectoryProperty dirProp = (DirectoryProperty)getProperty(sourceSet, langId, "classesDirectory");
+                                if (dirProp != null) {
+                                    File outDir;
+
+                                    if (dirProp.isPresent()) {
+                                        outDir = dirProp.get().getAsFile();
+                                    } else {
+                                        // kotlin plugin uses some weird late binding, so it has the output item, but it cannot be resolved to a
+                                        // concrete file path at this time. Let's make an approximation from
+                                        Path candidate = null;
+                                        if (base != null) {
+                                            Path prefix = base.resolve(langId);
+                                            // assume the language has just one output dir in the source set:
+                                            for (int i = 0; i < outPaths.size(); i++) {
+                                                Path p = outPaths.get(i);
+                                                if (p.startsWith(prefix)) {
+                                                    if (candidate != null) {
+                                                        candidate = null;
+                                                        break;
+                                                    } else {
+                                                        candidate = p;
+                                                    }
                                                 }
                                             }
                                         }
+                                        outDir = candidate != null ? candidate.toFile() : new File("");
                                     }
-                                    outDir = candidate != null ? candidate.toFile() : new File("");
+
+                                    model.getInfo().put(propBase + lang + "_output_classes", outDir);
                                 }
-                                
-                                model.getInfo().put(propBase + lang + "_output_classes", outDir);
-                            }
+                            });
+
+
                         }
                     }
    
@@ -1116,8 +1116,17 @@ class NbProjectInfoBuilder {
             }
         }
         Map<String, Object> archives = new HashMap<>();
-        project.getTasks().withType(Jar.class).forEach(jar -> {
-            archives.put(jar.getClassifier(), jar.getArchivePath());
+        beforeGradle("5.2", () -> {
+            // The jar.getCassifier() and jar.getArchievePath() are deprecated since 5.2
+            // These methods got removed in 8.0
+            project.getTasks().withType(Jar.class).forEach(jar -> {
+                archives.put(jar.getClassifier(), jar.getArchivePath());
+            });
+        });
+        sinceGradle("5.2", () -> {
+            project.getTasks().withType(Jar.class).forEach(jar -> {
+                archives.put(jar.getArchiveClassifier().get(), jar.getDestinationDirectory().file(jar.getArchiveFileName().get()).get().getAsFile());
+            });
         });
         model.getInfo().put("archives", archives);
     }
@@ -1286,16 +1295,16 @@ class NbProjectInfoBuilder {
     }
     
     private void detectDependencies(NbProjectInfoModel model) {
-        Set<ComponentIdentifier> ids = new HashSet();
-        Map<String, File> projects = new HashMap();
-        Map<String, String> unresolvedProblems = new HashMap();
-        Map<String, Set<File>> resolvedJvmArtifacts = new HashMap();
+        Set<ComponentIdentifier> ids = new HashSet<>();
+        Map<String, File> projects = new HashMap<>();
+        Map<String, String> unresolvedProblems = new HashMap<>();
+        Map<String, Set<File>> resolvedJvmArtifacts = new HashMap<>();
         Set<Configuration> visibleConfigurations = configurationsToSave();
         Map<String, String> projectIds = new HashMap<>();
 
         // NETBEANS-5846: if this project uses javaPlatform plugin with dependencies enabled, 
         // do not report unresolved problems
-        boolean ignoreUnresolvable = (project.getPlugins().hasPlugin(JavaPlatformPlugin.class) && 
+        boolean ignoreUnresolvable = (project.getPlugins().hasPlugin("java-platform") &&
             Boolean.TRUE.equals(getProperty(project, "javaPlatform", "allowDependencies")));
 
         visibleConfigurations.forEach(it -> {
@@ -1606,7 +1615,7 @@ class NbProjectInfoBuilder {
     }        
     
     private <T, E extends Throwable> T sinceGradleOrDefault(String version, ExceptionCallable<T, E> c, Supplier<T> def) {
-        if (gradleVersion.compareTo(VersionNumber.parse(version)) >= 0) {
+        if (GRADLE_VERSION.compareTo(GradleVersion.version(version)) >= 0) {
             try {
                 return c.call();
             } catch (RuntimeException | Error e) {
@@ -1615,8 +1624,10 @@ class NbProjectInfoBuilder {
                 sneakyThrow(t);
                 return null;
             }
-        } else {
+        } else if (def != null) {
             return def.get();
+        } else {
+            return null;
         }
     }
     
@@ -1625,23 +1636,34 @@ class NbProjectInfoBuilder {
     }
     
     private void sinceGradle(String version, Runnable r) {
-        if (gradleVersion.compareTo(VersionNumber.parse(version)) >= 0) {
+        if (GRADLE_VERSION.compareTo(GradleVersion.version(version)) >= 0) {
             r.run();
         }
     }
 
     private void beforeGradle(String version, Runnable r) {
-        if (gradleVersion.compareTo(VersionNumber.parse(version)) < 0) {
+        if (GRADLE_VERSION.compareTo(GradleVersion.version(version)) < 0) {
+            r.run();
+        }
+    }
+
+    private void asGradle(String fromVersion, String toVersion, Runnable r) {
+        if ((GRADLE_VERSION.compareTo(GradleVersion.version(fromVersion)) >= 0)
+                && (GRADLE_VERSION.compareTo(GradleVersion.version(toVersion)) < 0)) {
             r.run();
         }
     }
 
     private static Object getProperty(Object obj, String... propPath) {
         Object currentObject = obj;
-        for(String prop: propPath) {
-            currentObject = InvokerHelper.getPropertySafe(currentObject, prop);
+        try {
+            for(String prop: propPath) {
+                currentObject = InvokerHelper.getPropertySafe(currentObject, prop);
+            }
+            return currentObject;
+        } catch (MissingPropertyException ex) {
+            return null;
         }
-        return currentObject;
     }
 }
 
