@@ -18,25 +18,26 @@
  */
 package org.netbeans.modules.languages.hcl.ast;
 
+import java.util.List;
+import java.util.Objects;
+
+
 /**
  *
  * @author Laszlo Kishalmi
  */
-public final class HCLAttribute extends HCLElement {
+public record HCLAttribute(HCLIdentifier name, HCLExpression value) implements HCLElement {
 
-    HCLIdentifier name;
-
-    public HCLAttribute(HCLContainer parent) {
-        super(parent);
+    public HCLAttribute {
+        Objects.requireNonNull(name, "name cannot be null");
     }
- 
-    @Override
+
     public String id() {
         return name.id();
     }
 
-    public HCLIdentifier getName() {
-        return name;
+    @Override
+    public List<? extends HCLElement> elements() {
+        return  value != null ? List.of(name, value) : List.of(name);
     }
-
 }

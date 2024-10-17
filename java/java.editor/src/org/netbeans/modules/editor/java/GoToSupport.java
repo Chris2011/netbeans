@@ -408,7 +408,7 @@ public class GoToSupport {
         boolean insideImportStmt = false;
         TreePath path = controller.getTreeUtilities().pathFor(exactOffset);
 
-        if (token[0] != null && token[0].id() == JavaTokenId.JAVADOC_COMMENT) {
+        if (token[0] != null && (token[0].id() == JavaTokenId.JAVADOC_COMMENT || token[0].id() == JavaTokenId.JAVADOC_COMMENT_LINE_RUN)) {
             el = JavadocImports.findReferencedElement(controller, offset);
         } else {
             path = adjustPathForModuleName(path);
@@ -662,7 +662,7 @@ public class GoToSupport {
 
                 Token<JavaTokenId> t = ts.token();
 
-                if (JavaTokenId.JAVADOC_COMMENT == t.id()) {
+                if (JavaTokenId.JAVADOC_COMMENT == t.id() || JavaTokenId.JAVADOC_COMMENT_LINE_RUN == t.id()) {
                     // javadoc hyperlinking (references + param names)
                     TokenSequence<JavadocTokenId> jdts = ts.embedded(JavadocTokenId.language());
                     if (JavadocImports.isInsideReference(jdts, offset) || JavadocImports.isInsideParamName(jdts, offset)) {
@@ -881,7 +881,7 @@ public class GoToSupport {
             }
             private boolean process(TreePath path) {
 
-                Element resolved = TreeShims.toRecordComponent(info.getTrees().getElement(path));
+                Element resolved = org.netbeans.modules.java.editor.base.semantic.Utilities.toRecordComponent(info.getTrees().getElement(path));
                 if (toFind.equals(resolved)) {
                     found = getCurrentPath();
                     return true;

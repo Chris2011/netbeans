@@ -50,6 +50,8 @@
 /nb/ide.launcher/windows/nbproject/Package-*.bash
 /platform/o.n.bootstrap/launcher/windows/nbproject/Makefile-*.mk
 /platform/o.n.bootstrap/launcher/windows/nbproject/Package-*.bash
+/enterprise/web.jspparser/test/unit/data/emptyWebProject/lib/*.jar
+/enterprise/web.jspparser/test/unit/data/project2/lib/*.jar
 
 # Database logs
 derby.log
@@ -68,7 +70,6 @@ derby.log
 /ide/db.sql.visualeditor/src/org/netbeans/modules/db/sql/visualeditor/parser/Token.java
 /ide/db.sql.visualeditor/src/org/netbeans/modules/db/sql/visualeditor/parser/TokenMgrError.java
 /profiler/lib.profiler/release/lib/
-/profiler/lib.profiler/release/BUILDINFO.txt
 /websvccommon/websvc.saas.api/src/org/netbeans/modules/websvc/saas/model/jaxb/
 /websvccommon/websvc.saas.api/src/org/netbeans/modules/websvc/saas/model/oauth/
 /websvccommon/websvc.saas.api/src/org/netbeans/modules/websvc/saas/model/wadl/
@@ -94,6 +95,7 @@ derby.log
 ##################################
 /extide/gradle/netbeans-gradle-tooling/.gradle/
 /extide/gradle/netbeans-gradle-tooling/gradle/wrapper/gradle-wrapper.jar
+/extide/gradle/netbeans-gradle-tooling/bin/
 /extide/gradle/release/modules/gradle/daemon-loader/.gradle/
 /nbbuild/misc/prepare-bundles/target/
 
@@ -110,4 +112,11 @@ derby.log
 /java/languages.antlr/external/*.g4
 /java/languages.antlr/external/LexerAdaptor.java
 
+/ide/go.lang/src/org/antlr/parser/golang/Go*.java
 /ide/languages.hcl/src/org/netbeans/modules/languages/hcl/grammar/*.java
+/java/languages.antlr/src/org/antlr/parser/*/ANTLR*.java
+
+/webcommon/javascript2.json/src/org/netbeans/modules/javascript2/json/parser/Json*.java
+
+# idea
+.idea

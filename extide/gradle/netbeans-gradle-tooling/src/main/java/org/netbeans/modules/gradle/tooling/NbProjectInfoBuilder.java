@@ -40,6 +40,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -81,6 +82,7 @@ import org.gradle.api.artifacts.result.ResolvedDependencyResult;
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeContainer;
+import org.gradle.api.attributes.Category;
 import org.gradle.api.distribution.DistributionContainer;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
@@ -101,13 +103,18 @@ import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskDependency;
 import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.api.tasks.testing.Test;
-import org.gradle.internal.extensibility.DefaultExtraPropertiesExtension;
+import org.gradle.internal.resolve.ArtifactResolveException;
 import org.gradle.jvm.JvmLibrary;
+import org.gradle.jvm.toolchain.JavaCompiler;
 import org.gradle.language.base.artifact.SourcesArtifact;
 import org.gradle.language.java.artifact.JavadocArtifact;
 import org.gradle.plugin.use.PluginId;
+import org.gradle.api.provider.Property;
+import org.gradle.jvm.toolchain.JavaInstallationMetadata;
+import org.gradle.jvm.toolchain.JavaLauncher;
 import org.gradle.util.GradleVersion;
 import org.netbeans.modules.gradle.tooling.internal.NbProjectInfo;
+import org.netbeans.modules.gradle.tooling.internal.NbProjectInfo.Report;
 
 /**
  *
@@ -123,6 +130,18 @@ class NbProjectInfoBuilder {
      * project loader is enabled to FINER level.
      */
     private static final Logger LOG =  Logging.getLogger(NbProjectInfoBuilder.class);
+    
+    /**
+     * Maximum recursion depth into structures, arrays and maps. If this depth is reached, the 
+     * builder will record a warning and stop descending.
+     */
+    private static final int MAX_INTROSPECTION_DEPTH = 25;
+    
+    /**
+     * If a warning is recorded during introspection, further warnings will
+     * be suppressed until the introspector goes up to this level.
+     */
+    private static final int INTROSPECTION_RESET_DEPTH_WARNING = 5;
 
     /**
      * Name of the default extensibility point for various domain objects defined by Gradle.
@@ -211,6 +230,7 @@ class NbProjectInfoBuilder {
 
     public NbProjectInfo buildAll() {
         adapter.setModel(model);
+        
         runAndRegisterPerf(model, "meta", this::detectProjectMetadata);
         detectProps(model);
         detectLicense(model);
@@ -224,15 +244,13 @@ class NbProjectInfoBuilder {
         // introspection is only allowed for gradle 7.4 and above.
         // TODO: investigate if some of the instrospection could be done for earlier Gradles.
         sinceGradle("7.0", () -> {
+            initIntrospection();
+            
             runAndRegisterPerf(model, "detectExtensions", this::detectExtensions);
-        });
-        sinceGradle("7.0", () -> {
             runAndRegisterPerf(model, "detectPlugins2", this::detectAdditionalPlugins);
-        });
-        sinceGradle("7.0", () -> {
             runAndRegisterPerf(model, "taskDependencies", this::detectTaskDependencies);
+            runAndRegisterPerf(model, "taskProperties", this::detectTaskProperties);
         });
-        runAndRegisterPerf(model, "taskProperties", this::detectTaskProperties);
         runAndRegisterPerf(model, "artifacts", this::detectConfigurationArtifacts);
         storeGlobalTypes(model);
         return model;
@@ -273,7 +291,7 @@ class NbProjectInfoBuilder {
         addTypes(nonDecorated, classes);
         return classes.stream().map(Class::getName).sorted().collect(Collectors.joining(","));
     }
-    
+   
     private static final Set<String> EXCLUDE_TASK_PROPERTIES = new HashSet<>(Arrays.asList(
         "dependsOn",
         "project",
@@ -303,7 +321,7 @@ class NbProjectInfoBuilder {
             Class nonDecorated = findNonDecoratedClass(taskClass);
             
             taskPropertyTypes.put(task.getName(), nonDecorated.getName());
-            inspectObjectAndValues(taskClass, task, task.getName() + ".", globalTypes, taskPropertyTypes, taskProperties, EXCLUDE_TASK_PROPERTIES, true); // NOI18N
+            startInspectObjectAndValues(taskClass, task, task.getName() + ".", globalTypes, taskPropertyTypes, taskProperties, EXCLUDE_TASK_PROPERTIES, true); // NOI18N
         }
         
         model.getInfo().put("tasks.propertyValues", taskProperties); // NOI18N
@@ -417,6 +435,10 @@ class NbProjectInfoBuilder {
         long time = System.currentTimeMillis();
         try {
             r.run();
+        } catch (RuntimeException ex) {
+            // convert will eventually throw a different exception
+            convertOfflineException(ex);
+            LOG.debug("Error encountered during {0}: {1}", s, ex);
         } finally {
             long span = System.currentTimeMillis() - time;
             model.registerPerf(s, span);
@@ -427,7 +449,7 @@ class NbProjectInfoBuilder {
         model.getInfo().put("extensions.globalTypes", globalTypes); // NOI18N
     }
     
-    private void detectExtensions(NbProjectInfoModel model) {
+    private void initIntrospection() {
         StringBuilder sb = new StringBuilder();
         for (String s : IGNORED_SYSTEM_CLASSES_REGEXP) {
             if (sb.length() > 0) {
@@ -436,7 +458,9 @@ class NbProjectInfoBuilder {
             sb.append(s);
         }
         ignoreClassesPattern = Pattern.compile(sb.toString());
-
+    }
+    
+    private void detectExtensions(NbProjectInfoModel model) {
         inspectExtensions("", project.getExtensions());
         model.getInfo().put("extensions.propertyTypes", propertyTypes); // NOI18N
         model.getInfo().put("extensions.propertyValues", values); // NOI18N
@@ -508,8 +532,14 @@ class NbProjectInfoBuilder {
     public static final String COLLECTION_KEYS_MARKER = "#keys"; // NOI18N
     
     
+    /**
+     * Prevents the recursive descent to loop back to an already processed structure. 
+     */
+    private Map<Object, Boolean> valueIdentities = new IdentityHashMap<>();
+    
     private static boolean isPrimitiveOrString(Class c) {
-        if (c == Object.class) {
+        // Cannot export a Class as an object, the Class may not exist in the netbeans VM.
+        if (c == Object.class || c == Class.class) {
             return false;
         }
         String n = c.getName();
@@ -527,15 +557,54 @@ class NbProjectInfoBuilder {
      * @param propertyTypes
      * @param defaultValues 
      */
-    private void inspectObjectAndValues(Class clazz, Object object, String prefix, Map<String, Map<String, String>> globalTypes, Map<String, String> propertyTypes, Map<String, Object> defaultValues) {
+    private void startInspectObjectAndValues(Class clazz, Object object, String prefix, Map<String, Map<String, String>> globalTypes, Map<String, String> propertyTypes, Map<String, Object> defaultValues) {
+        depth = 0;
         inspectObjectAndValues(clazz, object, prefix, globalTypes, propertyTypes, defaultValues, null, true);
     }
     
+    private void startInspectObjectAndValues(Class clazz, Object object, String prefix, Map<String, Map<String, String>> globalTypes, Map<String, String> propertyTypes, Map<String, Object> defaultValues, Set<String> excludes, boolean type) {
+        depth = 0;
+        inspectObjectAndValues(clazz, object, prefix, globalTypes, propertyTypes, defaultValues, excludes, type);
+    }
+
+    private void inspectObjectAndValues(Class clazz, Object object, String prefix, Map<String, Map<String, String>> globalTypes, Map<String, String> propertyTypes, Map<String, Object> defaultValues) {
+        inspectObjectAndValues(clazz, object, prefix, globalTypes, propertyTypes, defaultValues, null, true);
+    }
+    /**
+     * The current introspection depth
+     */
+    private int depth;
+    
+    /**
+     * If true, depth exceeded warnings will not be logged.
+     */
+    private boolean suppressDepthWarning;
+    
     private void inspectObjectAndValues(Class clazz, Object object, String prefix, Map<String, Map<String, String>> globalTypes, Map<String, String> propertyTypes, Map<String, Object> defaultValues, Set<String> excludes, boolean type) {
+        if (valueIdentities.put(object, Boolean.TRUE) == Boolean.TRUE) {
+            return;
+        }
         try {
+            if (depth++ >= MAX_INTROSPECTION_DEPTH) {
+                if (!suppressDepthWarning) {
+                    LOG.warn("Too deep structure, truncating");
+                    model.noteProblem(Report.Severity.WARNING, 
+                            String.format("Object structure too deep encountered in class %s", clazz),
+                            String.format("Object structure is too deep for the project model builder. This is unlikely to affect basic project operations. "
+                                    + "Check logs and report this issue. The path for the object: %s, current value: %s", prefix, object));
+                    suppressDepthWarning = true;
+                }
+                return;
+            } else if (depth <= INTROSPECTION_RESET_DEPTH_WARNING) {
+                suppressDepthWarning = false;
+            }
             inspectObjectAndValues0(clazz, object, prefix, globalTypes, propertyTypes, defaultValues, excludes, type);
         } catch (RuntimeException ex) {
             LOG.warn("Error during inspection of {}, value {}, prefix {}", clazz, object, prefix);
+            model.noteProblem(ex, true);
+        } finally {
+            depth--;
+            valueIdentities.remove(object);
         }
     }
     
@@ -596,6 +665,9 @@ class NbProjectInfoBuilder {
                 // MultipleSetter is probably for an overloaded setter
                 if (mp instanceof MultipleSetterProperty) {
                     MultipleSetterProperty msp = (MultipleSetterProperty)mp;
+                    if (msp.getGetter() == null) {
+                        continue;
+                    }
                     t = msp.getGetter().getReturnType();
                 }
             }
@@ -622,6 +694,7 @@ class NbProjectInfoBuilder {
                         // just ignore - the value cannot be obtained
                         continue;
                     }
+                    
                     if (!isMutableType(potentialValue)) {
                         continue;
                     }
@@ -653,9 +726,17 @@ class NbProjectInfoBuilder {
                     if (Provider.class.isAssignableFrom(t)) {
                         ValueAndType vt = adapter.findPropertyValueInternal(propName, value);
                         if (vt != null) {
-                            t = vt.type;
                             if (vt.value.isPresent()) {
                                 value = vt.value.get();
+                            }
+                            if (vt.type != null) {
+                                t = vt.type;
+                            } else if (typeParameters != null && !typeParameters.isEmpty() && (typeParameters.get(0) instanceof Class)) {
+                                // derive the type from the provider's type parameter
+                                t = (Class)typeParameters.get(0);
+                            } else {
+                                // null value with an unspecified type from the provider
+                                t = Object.class; 
                             }
                         }
                     }
@@ -736,7 +817,7 @@ class NbProjectInfoBuilder {
             if (v == null) {
                 defaultValues.put(prefix + "." + k, null); // NOI18N
             } else {
-                defaultValues.put(prefix + "." + k, Objects.toString(v)); // NOI18N
+                defaultValues.put(prefix + "." + k, objectToString(v)); // NOI18N
                 inspectObjectAndValues(v.getClass(), v, newPrefix, globalTypes, propertyTypes, defaultValues, null, false);
             }
         }
@@ -772,8 +853,8 @@ class NbProjectInfoBuilder {
                 Object v = m.get(k);
                 if (v == null) {
                     defaultValues.put(prefix + "." + k, null); // NOI18N
-                } else {
-                    defaultValues.put(prefix + "." + k, Objects.toString(v)); // NOI18N
+                } else if (!v.equals(value)) {
+                    defaultValues.put(prefix + "." + k, objectToString(v)); // NOI18N
                     inspectObjectAndValues(v.getClass(), v, newPrefix, globalTypes, propertyTypes, defaultValues, null, false);
                 }
             }
@@ -804,7 +885,7 @@ class NbProjectInfoBuilder {
                         String newPrefix = prefix + "[" + index + "]."; // NOI18N
                         if (o == null) {
                             defaultValues.put(prefix + "[" + index + "]", null); //NOI18N
-                        } else {
+                        } else if (!o.equals(value)) {
                             defaultValues.put(prefix + "[" + index + "]", Objects.toString(o)); //NOI18N
                             inspectObjectAndValues(o.getClass(), o, newPrefix, globalTypes, propertyTypes, defaultValues, null, false);
                         }
@@ -852,8 +933,8 @@ class NbProjectInfoBuilder {
                     Object v = mvalue.get(o);
                     if (v == null) {
                         defaultValues.put(newPrefix, null); // NOI18N
-                    } else {
-                        defaultValues.put(newPrefix, Objects.toString(v)); // NOI18N
+                    } else if (!v.equals(value)) {
+                        defaultValues.put(newPrefix, objectToString(v)); // NOI18N
                         inspectObjectAndValues(v.getClass(), v, newPrefix + ".", globalTypes, propertyTypes, defaultValues, null, itemClass == null);
                     }
                 }
@@ -863,7 +944,21 @@ class NbProjectInfoBuilder {
         return dumped;
     }
     
+    private static String objectToString(Object o) {
+        if (o instanceof Map || o instanceof Iterable) {
+            return o.getClass().getName() + "@" + Integer.toHexString(System.identityHashCode(o));
+        } 
+        try {
+            return Objects.toString(o);
+        } catch (RuntimeException ex) {
+            return o.getClass().getName() + "@" + Integer.toHexString(System.identityHashCode(o));
+        }
+    }
+    
     private static Class findNonDecoratedClass(Class clazz) {
+        if (clazz == null || clazz.isInterface()) {
+            return clazz;
+        }
         while (clazz != Object.class && (clazz.getModifiers() & 0x1000 /* Modifiers.SYNTHETIC */) > 0) {
             clazz = clazz.getSuperclass();
         }
@@ -913,7 +1008,7 @@ class NbProjectInfoBuilder {
             
             Class c = findNonDecoratedClass(ext.getClass());
             propertyTypes.put(prefix + extName, c.getName());
-            inspectObjectAndValues(ext.getClass(), ext, prefix + extName + ".", globalTypes, propertyTypes, values);
+            startInspectObjectAndValues(ext.getClass(), ext, prefix + extName + ".", globalTypes, propertyTypes, values);
             if (ext instanceof ExtensionAware) {
                 inspectExtensions(prefix + extName + ".", ((ExtensionAware)ext).getExtensions());  // NOI18N
             }
@@ -969,7 +1064,8 @@ class NbProjectInfoBuilder {
         try {
             model.getInfo().put("buildClassPath", storeSet(project.getBuildscript().getConfigurations().getByName("classpath").getFiles()));
         } catch (RuntimeException e) {
-            model.noteProblem(e);
+            // unexpected exception, build classpath should be available.
+            model.noteProblem(e, true);
         }
         Set<String[]> tasks = new HashSet<>();
         for (org.gradle.api.Task t : project.getTasks()) {
@@ -1113,6 +1209,13 @@ class NbProjectInfoBuilder {
                                         o.toString()
                                 );
                             }
+                            
+                            sinceGradle("6.7", () -> {
+                                fetchJavaInstallationMetadata(compileTask).ifPresent(
+                                        (meta) -> model.getInfo().put(propBase + lang + "_compiler_java_home", meta.getInstallationPath().getAsFile())
+                                );
+                            });
+                            
                             List<String> compilerArgs;
 
                             compilerArgs = (List<String>) getProperty(compileTask, "options", "allCompilerArgs");
@@ -1187,13 +1290,17 @@ class NbProjectInfoBuilder {
                         model.getInfo().put(propBase + "classpath_compile", storeSet(sourceSet.getCompileClasspath().getFiles()));
                         model.getInfo().put(propBase + "classpath_runtime", storeSet(sourceSet.getRuntimeClasspath().getFiles()));
                     } catch(Exception e) {
-                        model.noteProblem(e);
+                        convertOfflineException(e);
+                        // will not be reached
+                        model.noteProblem(e, false);
                     }
                     sinceGradle("4.6", () -> {
                         try {
                             model.getInfo().put(propBase + "classpath_annotation", storeSet(getProperty(sourceSet, "annotationProcessorPath", "files")));
                         } catch(Exception e) {
-                            model.noteProblem(e);
+                            convertOfflineException(e);
+                            // will not be reached
+                            model.noteProblem(e, false);
                         }
                         model.getInfo().put(propBase + "configuration_annotation", getProperty(sourceSet, "annotationProcessorConfigurationName"));
                     });
@@ -1209,11 +1316,24 @@ class NbProjectInfoBuilder {
                 }
             } else {
                 model.getInfo().put("sourcesets", Collections.emptySet());
+                // TODO: should be this converted to Problem, severity INFO ?
                 model.noteProblem("No sourceSets found on this project. This project mightbe a Model/Rule based one which is not supported at the moment.");
             }
         }
     }
 
+    private Optional<JavaInstallationMetadata> fetchJavaInstallationMetadata(Task task) {
+        Property<JavaLauncher> launcherProperty = (Property<JavaLauncher>) getProperty(task, "javaLauncher");
+        if (launcherProperty != null && launcherProperty.isPresent()) {
+            return Optional.of(launcherProperty.get().getMetadata());
+        }
+        Property<JavaCompiler> compilerProperty = (Property<JavaCompiler>) getProperty(task, "javaCompiler");
+        if (compilerProperty != null && compilerProperty.isPresent()) {
+            return Optional.of(compilerProperty.get().getMetadata());
+        }
+        return Optional.empty();
+    }
+    
     private void detectArtifacts(NbProjectInfoModel model) {
         if (project.getPlugins().hasPlugin("java")) {
             model.getInfo().put("main_jar", getProperty(project, "jar", "archivePath"));
@@ -1225,12 +1345,14 @@ class NbProjectInfoBuilder {
             try {
                 model.getInfo().put("exploded_war_dir", getProperty(project, "explodedWar", "destinationDir"));
             } catch(Exception e) {
-                model.noteProblem(e);
+                // probably not an internal error, but misconfiguration, omit trace
+                model.noteProblem(e, false);
             }
             try {
                 model.getInfo().put("web_classpath", getProperty(project, "war", "classpath", "files"));
             } catch(Exception e) {
-                model.noteProblem(e);
+                // probably not an internal error, but misconfiguration, omit trace
+                model.noteProblem(e, false);
             }
         }
         Map<String, Object> archives = new HashMap<>();
@@ -1337,6 +1459,12 @@ class NbProjectInfoBuilder {
         }
         
         public void walkResolutionResult(ResolvedDependencyResult node, Set<String> stack) {
+            String c = node.getResolvedVariant().getAttributes().getAttribute(Attribute.of("org.gradle.category", String.class)); 
+            if (c != null && (Category.REGULAR_PLATFORM.equals(c) || Category.ENFORCED_PLATFORM.equals(c))) {
+                // TEMPORARY FIX: do not walk children of BOMs, as they are not real dependencies, just version constraints.
+                // better project dependency API needed to handle this.
+                return;
+            }
             depth++;
             ResolvedComponentResult rcr = node.getSelected();
             String id = findNodeIdentifier(rcr.getId());
@@ -1396,17 +1524,21 @@ class NbProjectInfoBuilder {
                         // hidden configurations like 'testCodeCoverageReportExecutionData' might contain unresolvable artifacts.
                         // do not report problems here
                         Throwable failure = ((UnresolvedDependencyResult) it2).getFailure();
-                        if (project.getGradle().getStartParameter().isOffline()) {
-                            // if the unresolvable is bcs. offline mode, throw an exception to get retry in online mode.
-                            Throwable prev = null;
-                            for (Throwable t = failure; t != prev && t != null; prev = t, t = t.getCause()) {
-                                if (t.getMessage().contains("available for offline")) {
-                                    throw new NeedOnlineModeException("Need online mode", failure);
-                                }
-                            }
-                        }
+                        convertOfflineException(failure);
                         unresolvedProblems.putIfAbsent(id, ((UnresolvedDependencyResult) it2).getFailure().getMessage());
                     }
+                }
+            }
+        }
+    }
+    
+    private void convertOfflineException(Throwable failure) {
+        if (project.getGradle().getStartParameter().isOffline()) {
+            // if the unresolvable is bcs. offline mode, throw an exception to get retry in online mode.
+            Throwable prev = null;
+            for (Throwable t = failure; t != prev && t != null; prev = t, t = t.getCause()) {
+                if (t.getMessage().contains("available for offline")) {
+                    throw new NeedOnlineModeException("Need online mode", failure);
                 }
             }
         }
@@ -1494,15 +1626,7 @@ class NbProjectInfoBuilder {
                                 // hidden configurations like 'testCodeCoverageReportExecutionData' might contain unresolvable artifacts.
                                 // do not report problems here
                                 Throwable failure = ((UnresolvedDependencyResult) it2).getFailure();
-                                if (project.getGradle().getStartParameter().isOffline()) {
-                                    // if the unresolvable is bcs. offline mode, throw an exception to get retry in online mode.
-                                    Throwable prev = null;
-                                    for (Throwable t = failure; t != prev && t != null; prev = t, t = t.getCause()) {
-                                        if (t.getMessage().contains("available for offline")) {
-                                            throw new NeedOnlineModeException("Need online mode", failure);
-                                        }
-                                    }
-                                }
+                                convertOfflineException(failure);
                                 unresolvedProblems.put(id, ((UnresolvedDependencyResult) it2).getFailure().getMessage());
                             }
                         }
@@ -1517,7 +1641,7 @@ class NbProjectInfoBuilder {
 
                     walker.walkResolutionResult(it.getIncoming().getResolutionResult().getRoot());
                 } catch (ResolveException ex) {
-                    model.noteProblem(ex);
+                    model.noteProblem(ex, false);
                 }
             } else {
                 unresolvedIds.addAll(componentIds);
@@ -1574,10 +1698,16 @@ class NbProjectInfoBuilder {
                             resolvedJvmArtifacts.putIfAbsent(a.getId().getComponentIdentifier().toString(), Collections.singleton(a.getFile()));
                         }
                     });
-                    it.getResolvedConfiguration()
-                            .getLenientConfiguration()
-                            .getFirstLevelModuleDependencies(Specs.SATISFIES_ALL)
-                            .forEach(rd -> collectArtifacts(rd, resolvedJvmArtifacts));
+                    try {
+                        it.getResolvedConfiguration()
+                                .getLenientConfiguration()
+                                .getFirstLevelModuleDependencies(Specs.SATISFIES_ALL)
+                                .forEach(rd -> collectArtifacts(rd, resolvedJvmArtifacts));
+                    } catch (ArtifactResolveException ex) {
+                        convertOfflineException(ex);
+                        // will not be reached, if the exception is converted
+                        throw ex;
+                    }
                 } catch (NullPointerException ex) {
                     //This can happen if the configuration resolution had issues
                 }

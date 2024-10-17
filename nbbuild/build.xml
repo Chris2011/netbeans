@@ -467,7 +467,7 @@ metabuild.hash=${metabuild.hash}</echo>
     </downloadbinaries>
 
     <mkdir dir="${netbeans.dest.dir}/bin" />
-    <unzip src="../nb/ide.launcher/external/launcher-12.5-distribution.zip" dest="${netbeans.dest.dir}/bin">
+    <unzip src="../nb/ide.launcher/external/launcher-external-binaries-1-94a19f0.zip" dest="${netbeans.dest.dir}/bin">
         <patternset>
             <include name="netbeans*.exe"/>
         </patternset>
@@ -2185,7 +2185,7 @@ It is possible to use -Ddebug.port=3234 -Ddebug.pause=y to start the system in d
         
         <taskdef uri="antlib:org.apache.rat.anttasks" resource="org/apache/rat/anttasks/antlib.xml">
             <classpath>
-                <pathelement location="external/apache-rat-0.12.jar"/>
+                <pathelement location="external/apache-rat-0.15.jar"/>
             </classpath>
         </taskdef>
         

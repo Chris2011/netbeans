@@ -27,9 +27,10 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
-import java.util.TreeMap;
+import java.util.TreeSet;
 import org.netbeans.modules.php.api.PhpVersion;
+import org.netbeans.modules.php.api.util.StringUtils;
+import org.netbeans.modules.php.editor.CodeUtils;
 import org.netbeans.modules.php.editor.actions.FixUsesAction.Options;
 import org.netbeans.modules.php.editor.actions.ImportData.DataItem;
 import org.netbeans.modules.php.editor.actions.ImportData.ItemVariant;
@@ -63,7 +64,7 @@ public class ImportDataCreator {
 
     private static Collection<FullyQualifiedElement> sortFQElements(final Collection<FullyQualifiedElement> filteredFQElements) {
         final List<FullyQualifiedElement> sortedFQElements = new ArrayList<>(filteredFQElements);
-        Collections.sort(sortedFQElements, new FQElementsComparator());
+        sortedFQElements.sort(new FQElementsComparator());
         return sortedFQElements;
     }
 
@@ -75,22 +76,8 @@ public class ImportDataCreator {
     }
 
     public ImportData create() {
-        for (Map.Entry<String, List<UsedNamespaceName>> entry : (new TreeMap<>(usedNames)).entrySet()) {
-            if (entry.getValue().size() > 1) {
-                Map<Integer, List<UsedNamespaceName>> scopeNames = new HashMap();
-                for (UsedNamespaceName usedName : entry.getValue()) {
-                    Integer scopeOffset = usedName.getInScope().getBlockRange().getStart();
-                    if (!scopeNames.containsKey(scopeOffset)) {
-                        scopeNames.put(scopeOffset, new ArrayList());
-                    }
-                    scopeNames.get(scopeOffset).add(usedName);
-                }
-                for (Map.Entry<Integer, List<UsedNamespaceName>> keyNames : scopeNames.entrySet()) {
-                    processFQElementName(entry.getKey(), keyNames.getValue());
-                }
-            } else {
-                processFQElementName(entry.getKey(), entry.getValue());
-            }
+        for (String fqElementName : new TreeSet<>(usedNames.keySet())) {
+            processFQElementName(fqElementName);
         }
         ImportData data = new ImportData();
         for (PossibleItem possibleItem : possibleItems) {
@@ -100,27 +87,32 @@ public class ImportDataCreator {
         return data;
     }
 
-    private void processFQElementName(final String fqElementName, List<UsedNamespaceName> usedNames) {
-        Collection<FullyQualifiedElement> possibleFQElements = fetchPossibleFQElements(fqElementName);
+    private void processFQElementName(final String fqElementName) {
+        // GH-6039: avoid getting all types
+        if (!StringUtils.hasText(fqElementName)) {
+            return;
+        }
+        // GH-6075
+        String fqeName = CodeUtils.removeNullableTypePrefix(fqElementName);
+        Collection<FullyQualifiedElement> possibleFQElements = fetchPossibleFQElements(fqeName);
         Collection<FullyQualifiedElement> filteredPlatformConstsAndFunctions = filterPlatformConstsAndFunctions(possibleFQElements);
         Collection<FullyQualifiedElement> filteredDuplicates = filterDuplicates(filteredPlatformConstsAndFunctions);
-        Collection<FullyQualifiedElement> filteredExactUnqualifiedNames = filterExactUnqualifiedName(filteredDuplicates, fqElementName);
+        Collection<FullyQualifiedElement> filteredExactUnqualifiedNames = filterExactUnqualifiedName(filteredDuplicates, fqeName);
         if (filteredExactUnqualifiedNames.isEmpty()) {
             if (options.getPhpVersion().compareTo(PhpVersion.PHP_56) >= 0) {
-                possibleItems.add(new EmptyItem(fqElementName));
+                possibleItems.add(new EmptyItem(fqeName));
             } else {
-                if (!isConstOrFunction(fqElementName)) {
-                    possibleItems.add(new EmptyItem(fqElementName));
+                if (!isConstOrFunction(fqeName)) {
+                    possibleItems.add(new EmptyItem(fqeName));
                 }
             }
         } else {
             Collection<FullyQualifiedElement> filteredFQElements = filterFQElementsFromCurrentNamespace(filteredExactUnqualifiedNames);
             if (filteredFQElements.isEmpty()) {
-                possibleItems.add(new ReplaceItem(fqElementName, usedNames, filteredExactUnqualifiedNames));
+                possibleItems.add(new ReplaceItem(fqeName, filteredExactUnqualifiedNames));
             } else {
                 possibleItems.add(new ValidItem(
-                        fqElementName,
-                        usedNames,
+                        fqeName,
                         filteredFQElements,
                         filteredFQElements.size() != filteredExactUnqualifiedNames.size()));
             }
@@ -190,7 +182,28 @@ public class ImportDataCreator {
     private Collection<FullyQualifiedElement> filterExactUnqualifiedName(final Collection<FullyQualifiedElement> possibleFQElements, final String typeName) {
         Collection<FullyQualifiedElement> result = new HashSet<>();
         for (FullyQualifiedElement fqElement : possibleFQElements) {
-            if (fqElement.getFullyQualifiedName().toString().endsWith(typeName)) {
+            // type name: e.g. Foo, Name\Space\Foo, \Name\Space\Foo
+            // GH-7546 if an element name has the same prefix and suffix(e.g. Foo2Foo),
+            // the following check is incorrect
+            // `fqElement.getFullyQualifiedName().toString().endsWith(typeName)`
+            // so, compare the segments, instead
+            QualifiedName qualifiedTypeName = QualifiedName.create(typeName);
+            List<String> segments = qualifiedTypeName.getSegments();
+            Collections.reverse(segments);
+            List<String> elementSegments = fqElement.getFullyQualifiedName().getSegments();
+            Collections.reverse(elementSegments);
+            boolean exactUnqualifiedName = true;
+            if (!segments.isEmpty() && segments.size() <= elementSegments.size()) {
+                for (int i = 0; i < segments.size(); i++) {
+                    if (!segments.get(i).equals(elementSegments.get(i))) {
+                        exactUnqualifiedName = false;
+                        break;
+                    }
+                }
+            } else {
+                exactUnqualifiedName = false;
+            }
+            if (exactUnqualifiedName) {
                 result.add(fqElement);
             }
         }
@@ -242,12 +255,10 @@ public class ImportDataCreator {
 
     private final class ReplaceItem implements PossibleItem {
         private final String fqName;
-        private final List<UsedNamespaceName> usedNames;
         private final Collection<FullyQualifiedElement> filteredExactUnqualifiedNames;
 
-        public ReplaceItem(String fqName, List<UsedNamespaceName> usedNames, Collection<FullyQualifiedElement> filteredExactUnqualifiedNames) {
+        public ReplaceItem(String fqName, Collection<FullyQualifiedElement> filteredExactUnqualifiedNames) {
             this.fqName = fqName;
-            this.usedNames = usedNames;
             this.filteredExactUnqualifiedNames = filteredExactUnqualifiedNames;
         }
 
@@ -259,7 +270,8 @@ public class ImportDataCreator {
                     ? fqElement.getFullyQualifiedName().toString()
                     : fqElement.getName();
             ItemVariant replaceItemVariant = new ItemVariant(itemVariantReplaceName, ItemVariant.UsagePolicy.CAN_BE_USED);
-            data.addJustToReplace(new DataItem(fqName, Collections.singletonList(replaceItemVariant), replaceItemVariant, usedNames));
+            assert usedNames.get(fqName) != null : "fqName: " + fqName; // NOI18N
+            data.addJustToReplace(new DataItem(fqName, Collections.singletonList(replaceItemVariant), replaceItemVariant, usedNames.get(fqName)));
         }
 
         private FullyQualifiedElement findBestElement() {
@@ -276,12 +288,10 @@ public class ImportDataCreator {
     private final class ValidItem implements PossibleItem {
         private final Collection<FullyQualifiedElement> filteredFQElements;
         private final String typeName;
-        private final List<UsedNamespaceName> usedNames;
         private final boolean existsFQElementFromCurrentNamespace;
 
-        private ValidItem(String typeName, List<UsedNamespaceName> usedNames, Collection<FullyQualifiedElement> filteredFQElements, boolean existsFQELEMENTFromCurrentNamespace) {
+        private ValidItem(String typeName, Collection<FullyQualifiedElement> filteredFQElements, boolean existsFQELEMENTFromCurrentNamespace) {
             this.typeName = typeName;
-            this.usedNames = usedNames;
             this.filteredFQElements = filteredFQElements;
             this.existsFQElementFromCurrentNamespace = existsFQELEMENTFromCurrentNamespace;
         }
@@ -326,7 +336,8 @@ public class ImportDataCreator {
                 }
             }
             Collections.sort(variants);
-            data.add(new DataItem(typeName, variants, defaultValue, usedNames));
+            assert usedNames.get(typeName) != null : "typeName: " + typeName; // NOI18N
+            data.add(new DataItem(typeName, variants, defaultValue, usedNames.get(typeName)));
         }
 
     }

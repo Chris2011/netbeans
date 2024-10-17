@@ -464,6 +464,8 @@ public class TomcatPlatformImpl extends J2eePlatformImpl2 {
             // Only TomEE versions 8/9 of type Plus/PluME support full profile
             if (manager.getTomEEType().ordinal() >= 3 ) {
                 switch (manager.getTomEEVersion()) {
+                    case TOMEE_100:
+                        profiles.add(Profile.JAKARTA_EE_10_FULL);
                     case TOMEE_90:
                         profiles.add(Profile.JAKARTA_EE_9_1_FULL);
                         break;
@@ -478,6 +480,8 @@ public class TomcatPlatformImpl extends J2eePlatformImpl2 {
                 }
             }
             switch (manager.getTomEEVersion()) {
+                case TOMEE_100:
+                    profiles.add(Profile.JAKARTA_EE_10_WEB);
                 case TOMEE_90:
                     profiles.add(Profile.JAKARTA_EE_9_1_WEB);
                     break;
@@ -506,7 +510,7 @@ public class TomcatPlatformImpl extends J2eePlatformImpl2 {
         } else {
             switch (manager.getTomcatVersion()) {
                 case TOMCAT_110:
-                    profiles.add(Profile.JAKARTA_EE_10_WEB);
+                    profiles.add(Profile.JAKARTA_EE_11_WEB);
                     break;
                 case TOMCAT_101:
                     profiles.add(Profile.JAKARTA_EE_10_WEB);
@@ -551,11 +555,12 @@ public class TomcatPlatformImpl extends J2eePlatformImpl2 {
         // TomEE has different supported Java versions
         if (manager.isTomEE()) {
             switch (manager.getTomEEVersion()) {
+                case TOMEE_100:
                 case TOMEE_90:
-                    versions = versionRange(11, 21);
+                    versions = versionRange(11, 24);
                     break;
                 case TOMEE_80:
-                    versions = versionRange(8, 21);
+                    versions = versionRange(8, 24);
                     break;
                 case TOMEE_71:
                 case TOMEE_70:
@@ -572,20 +577,20 @@ public class TomcatPlatformImpl extends J2eePlatformImpl2 {
         } else {
             switch (manager.getTomcatVersion()) {
                 case TOMCAT_110:
-                    versions = versionRange(17, 21);
+                    versions = versionRange(21, 24);
                     break;
                 case TOMCAT_101:
-                    versions = versionRange(11, 21);
+                    versions = versionRange(11, 24);
                     break;
                 case TOMCAT_100:
                 case TOMCAT_90:
-                    versions = versionRange(8, 21);
+                    versions = versionRange(8, 24);
                     break;
                 case TOMCAT_80:
-                    versions = versionRange(7, 21);
+                    versions = versionRange(7, 24);
                     break;
                 case TOMCAT_70:
-                    versions = versionRange(6, 21);
+                    versions = versionRange(6, 24);
                     break;
                 case TOMCAT_60:
                     versions = versionRange(5, 8);

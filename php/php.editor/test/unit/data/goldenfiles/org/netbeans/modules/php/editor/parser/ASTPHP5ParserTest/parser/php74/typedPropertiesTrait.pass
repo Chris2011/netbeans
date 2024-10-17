@@ -685,7 +685,7 @@
                             </Variable>
                         </VariableNames>
                         <InitialValues>
-                            <Scalar start='1349' end='1352' type='REAL' value='1.2'/>
+                            <Scalar start='1349' end='1352' type='FLOAT' value='1.2'/>
                         </InitialValues>
                     </FieldsDeclaration>
                     <FieldsDeclaration start='1373' end='1421' modifier='private static'>
@@ -756,9 +756,7 @@
                             </Variable>
                         </VariableNames>
                         <InitialValues>
-                            <NamespaceName start='1516' end='1520' isCurrent='false' isGlobal='false'>
-                                <Identifier start='1516' end='1520' name='null'/>
-                            </NamespaceName>
+                            <Scalar start='1516' end='1520' type='STRING' value='null'/>
                         </InitialValues>
                     </FieldsDeclaration>
                     <FieldsDeclaration start='1526' end='1566' modifier='private static'>

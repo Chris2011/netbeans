@@ -23,6 +23,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.Writer;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
@@ -54,6 +56,7 @@ import org.eclipse.lsp4j.ClientCapabilities;
 import org.eclipse.lsp4j.DocumentSymbolCapabilities;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
+import org.eclipse.lsp4j.InitializedParams;
 import org.eclipse.lsp4j.ResourceOperationKind;
 import org.eclipse.lsp4j.SemanticTokens;
 import org.eclipse.lsp4j.SemanticTokensCapabilities;
@@ -68,6 +71,7 @@ import org.eclipse.lsp4j.WorkspaceClientCapabilities;
 import org.eclipse.lsp4j.WorkspaceEditCapabilities;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.launch.LSPLauncher;
+import org.eclipse.lsp4j.services.LanguageClientAware;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
@@ -104,6 +108,7 @@ import org.openide.util.lookup.Lookups;
  */
 public class LSPBindings {
 
+    private static final Logger LOG = Logger.getLogger(LSPBindings.class.getName());
     private static final int DELAY = 500;
     private static final int LSP_KEEP_ALIVE_MINUTES = 10;
     private static final int INVALID_START_TIME = 1 * 60 * 1000;
@@ -216,6 +221,7 @@ public class LSPBindings {
                 for(String mt: description.mimeTypes) {
                     mimeType2Server.put(mt, description);
                 }
+                TextDocumentSyncServerCapabilityHandler.refreshOpenedFilesInServers();
                 WORKER.post(() -> cs.fireChange());
             }
         }
@@ -298,35 +304,70 @@ public class LSPBindings {
                 foundServer = true;
                 try {
                     LanguageClientImpl lci = new LanguageClientImpl();
-                    InputStream in = LanguageServerProviderAccessor.getINSTANCE().getInputStream(desc);
-                    OutputStream out = LanguageServerProviderAccessor.getINSTANCE().getOutputStream(desc);
-                    Process p = LanguageServerProviderAccessor.getINSTANCE().getProcess(desc);
-                    Launcher<LanguageServer> launcher = new LSPLauncher.Builder<LanguageServer>()
-                                                                       .setLocalService(lci)
-                                                                       .setRemoteInterface(LanguageServer.class)
-                                                                       .setInput(in)
-                                                                       .setOutput(out)
-                                                                       .configureGson(gson -> {
-                       gson.registerTypeAdapter(SemanticTokensLegend.class, new InstanceCreator<SemanticTokensLegend>() {
-                           @Override public SemanticTokensLegend createInstance(Type type) {
-                               return new SemanticTokensLegend(Collections.emptyList(), Collections.emptyList());
-                           }
-                       });
-                       gson.registerTypeAdapter(SemanticTokens.class, new InstanceCreator<SemanticTokens>() {
-                           @Override public SemanticTokens createInstance(Type type) {
-                               return new SemanticTokens(Collections.emptyList());
-                           }
-                       });
-                    }).create();
-                    launcher.startListening();
-                    LanguageServer server = launcher.getRemoteProxy();
-                    InitializeResult result = initServer(p, server, dir); //XXX: what if a different root is expected????
+                    LanguageServer server = LanguageServerProviderAccessor.getINSTANCE().getServer(desc);
+                    Process process;
+                    if (server == null) {
+                        InputStream in = LanguageServerProviderAccessor.getINSTANCE().getInputStream(desc);
+                        OutputStream out = LanguageServerProviderAccessor.getINSTANCE().getOutputStream(desc);
+                        process = LanguageServerProviderAccessor.getINSTANCE().getProcess(desc);
+                        Launcher.Builder<LanguageServer> launcherBuilder = new LSPLauncher.Builder<LanguageServer>()
+                                .setLocalService(lci)
+                                .setRemoteInterface(LanguageServer.class)
+                                .setInput(in)
+                                .setOutput(out)
+                                .configureGson(gson -> {
+                                    gson.registerTypeAdapter(SemanticTokensLegend.class, new InstanceCreator<SemanticTokensLegend>() {
+                                        @Override
+                                        public SemanticTokensLegend createInstance(Type type) {
+                                            return new SemanticTokensLegend(Collections.emptyList(), Collections.emptyList());
+                                        }
+                                    });
+                                    gson.registerTypeAdapter(SemanticTokens.class, new InstanceCreator<SemanticTokens>() {
+                                        @Override
+                                        public SemanticTokens createInstance(Type type) {
+                                            return new SemanticTokens(Collections.emptyList());
+                                        }
+                                    });
+                                });
+
+                        if (LOG.isLoggable(Level.FINER)) {
+                            PrintWriter pw = new PrintWriter(new Writer() {
+                                StringBuffer sb = new StringBuffer();
+
+                                @Override
+                                public void write(char[] cbuf, int off, int len) throws IOException {
+                                    sb.append(cbuf, off, len);
+                                }
+
+                                @Override
+                                public void flush() throws IOException {
+                                    LOG.finer(sb.toString());
+                                }
+
+                                @Override
+                                public void close() throws IOException {
+                                    sb.setLength(0);
+                                    sb.trimToSize();
+                                }
+                            });
+                            launcherBuilder.traceMessages(pw);
+                        }
+                        Launcher<LanguageServer> launcher = launcherBuilder.create();
+                        launcher.startListening();
+                        server = launcher.getRemoteProxy();
+                    } else {
+                        process = null;
+                        if (server instanceof LanguageClientAware aware) {
+                            aware.connect(lci);
+                        }
+                    }
+                    InitializeResult result = initServer(process, server, dir); //XXX: what if a different root is expected????
+                    server.initialized(new InitializedParams());
                     b = new LSPBindings(server, result, LanguageServerProviderAccessor.getINSTANCE().getProcess(desc));
                     // Register cleanup via LSPReference#run
                     new LSPReference(b, Utilities.activeReferenceQueue());
                     lci.setBindings(b);
                     LanguageServerProviderAccessor.getINSTANCE().setBindings(desc, b);
-                    TextDocumentSyncServerCapabilityHandler.refreshOpenedFilesInServers();
                     return b;
                 } catch (InterruptedException | ExecutionException ex) {
                     LOG.log(Level.WARNING, null, ex);
@@ -338,8 +379,6 @@ public class LSPBindings {
         }
         return null;
     }
-
-    private static final Logger LOG = Logger.getLogger(LSPBindings.class.getName());
 
     @Messages("LBL_Connecting=Connecting to language server")
     public static void addBindings(FileObject root, int port, String... extensions) {
@@ -360,6 +399,7 @@ public class LSPBindings {
                 launcher.startListening();
                 LanguageServer server = launcher.getRemoteProxy();
                 InitializeResult result = initServer(null, server, root);
+                server.initialized(new InitializedParams());
                 LSPBindings bindings = new LSPBindings(server, result, null);
 
                 lc.setBindings(bindings);

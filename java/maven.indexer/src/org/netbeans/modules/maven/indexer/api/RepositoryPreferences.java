@@ -79,6 +79,8 @@ public final class RepositoryPreferences {
     public static final String PROP_LAST_INDEX_UPDATE = "lastIndexUpdate"; //NOI18N
     private static final String PROP_INDEX_DOWNLOAD_PERMISSIONS = "indexDownloadPermissions"; //NOI18N
     public static final String PROP_MT_INDEX_EXTRACTION = "indexMultiThreadedExtraction"; //NOI18N
+    public static final String PROP_INDEX_DATE_CUTOFF_FILTER = "indexDateCotoffFilter"; //NOI18N
+    private static final String ALT_CENTRAL_URL = "https://repo1.maven.org/maven2"; //NOI18N
 
     public static final int FREQ_ONCE_WEEK = 0;
     public static final int FREQ_ONCE_DAY = 1;
@@ -419,6 +421,14 @@ public final class RepositoryPreferences {
         return isIndexRepositories() && isIndexDownloadEnabled() && !isIndexDownloadPaused();
     }
 
+    public static int getIndexDateCutoffFilter() {
+        return getPreferences().getInt(PROP_INDEX_DATE_CUTOFF_FILTER, 0);
+    }
+    
+    public static void setIndexDateCutoffFilter(int years) {
+        getPreferences().putInt(PROP_INDEX_DATE_CUTOFF_FILTER, years);
+    }
+
     public static boolean isIndexDownloadPaused() {
         return Instant.now().isBefore(indexDownloadPauseEnd);
     }
@@ -536,12 +546,12 @@ public final class RepositoryPreferences {
             //only register repositories we can safely handle.. #227322
             return;
         }
+        if (url.equals(ALT_CENTRAL_URL) || url.equals(ALT_CENTRAL_URL+"/")) {
+            // map to primary URL to avoid duplicates
+            url = RepositorySystem.DEFAULT_REMOTE_REPO_URL;
+        }
         synchronized (infoCache) {
-            List<RepositoryInfo> infos = transients.get(key);
-            if (infos == null) {
-                infos = new ArrayList<>();
-                transients.put(key, infos);
-            }
+            List<RepositoryInfo> infos = transients.computeIfAbsent(key, k -> new ArrayList<>());
             RepositoryInfo info = new RepositoryInfo(id, displayName, null, url);
             info.setMirrorStrategy(strategy);
             infos.add(info);

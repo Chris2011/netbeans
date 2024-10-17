@@ -34,7 +34,6 @@ import org.netbeans.modules.languages.hcl.ast.HCLAttribute;
 import org.netbeans.modules.languages.hcl.ast.HCLBlock;
 import org.netbeans.modules.languages.hcl.ast.HCLContainer;
 import org.netbeans.modules.languages.hcl.ast.HCLElement;
-import org.netbeans.modules.languages.hcl.ast.SourceRef;
 import org.openide.filesystems.FileObject;
 
 /**
@@ -64,7 +63,12 @@ public class HCLStructureItem implements ElementHandle, StructureItem {
 
     @Override
     public String getName() {
-        return element.id();
+        if (element instanceof HCLAttribute a) {
+            return a.id();
+        } else if (element instanceof HCLBlock b) {
+            return b.id();
+        }
+        return  "<" + element.getClass().getSimpleName() + ">";
     }
 
     @Override
@@ -114,10 +118,10 @@ public class HCLStructureItem implements ElementHandle, StructureItem {
             if (element instanceof HCLContainer) {
                 HCLContainer c = (HCLContainer) element;
                 List<HCLStructureItem> nested = new ArrayList<>();
-                for (HCLBlock block : c.getBlocks()) {
+                for (HCLBlock block : c.blocks()) {
                     nested.add(new HCLStructureItem(block, references));
                 }
-                for (HCLAttribute attribute : c.getAttributes()) {
+                for (HCLAttribute attribute : c.attributes()) {
                     nested.add(new HCLStructureItem(attribute, references));
                 }
                 nestedCache = nested;

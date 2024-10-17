@@ -1,9 +1,10 @@
 #Signature file v4.1
-#Version 2.61.0
+#Version 2.68.0
 
 CLSS public abstract interface com.sun.source.tree.TreeVisitor<%0 extends java.lang.Object, %1 extends java.lang.Object>
 meth public abstract {com.sun.source.tree.TreeVisitor%0} visitAnnotatedType(com.sun.source.tree.AnnotatedTypeTree,{com.sun.source.tree.TreeVisitor%1})
 meth public abstract {com.sun.source.tree.TreeVisitor%0} visitAnnotation(com.sun.source.tree.AnnotationTree,{com.sun.source.tree.TreeVisitor%1})
+meth public abstract {com.sun.source.tree.TreeVisitor%0} visitAnyPattern(com.sun.source.tree.AnyPatternTree,{com.sun.source.tree.TreeVisitor%1})
 meth public abstract {com.sun.source.tree.TreeVisitor%0} visitArrayAccess(com.sun.source.tree.ArrayAccessTree,{com.sun.source.tree.TreeVisitor%1})
 meth public abstract {com.sun.source.tree.TreeVisitor%0} visitArrayType(com.sun.source.tree.ArrayTypeTree,{com.sun.source.tree.TreeVisitor%1})
 meth public abstract {com.sun.source.tree.TreeVisitor%0} visitAssert(com.sun.source.tree.AssertTree,{com.sun.source.tree.TreeVisitor%1})
@@ -50,7 +51,6 @@ meth public abstract {com.sun.source.tree.TreeVisitor%0} visitOther(com.sun.sour
 meth public abstract {com.sun.source.tree.TreeVisitor%0} visitPackage(com.sun.source.tree.PackageTree,{com.sun.source.tree.TreeVisitor%1})
 meth public abstract {com.sun.source.tree.TreeVisitor%0} visitParameterizedType(com.sun.source.tree.ParameterizedTypeTree,{com.sun.source.tree.TreeVisitor%1})
 meth public abstract {com.sun.source.tree.TreeVisitor%0} visitParenthesized(com.sun.source.tree.ParenthesizedTree,{com.sun.source.tree.TreeVisitor%1})
-meth public abstract {com.sun.source.tree.TreeVisitor%0} visitParenthesizedPattern(com.sun.source.tree.ParenthesizedPatternTree,{com.sun.source.tree.TreeVisitor%1})
 meth public abstract {com.sun.source.tree.TreeVisitor%0} visitPatternCaseLabel(com.sun.source.tree.PatternCaseLabelTree,{com.sun.source.tree.TreeVisitor%1})
 meth public abstract {com.sun.source.tree.TreeVisitor%0} visitPrimitiveType(com.sun.source.tree.PrimitiveTypeTree,{com.sun.source.tree.TreeVisitor%1})
 meth public abstract {com.sun.source.tree.TreeVisitor%0} visitProvides(com.sun.source.tree.ProvidesTree,{com.sun.source.tree.TreeVisitor%1})
@@ -87,6 +87,7 @@ meth public {com.sun.source.util.TreeScanner%0} scan(com.sun.source.tree.Tree,{c
 meth public {com.sun.source.util.TreeScanner%0} scan(java.lang.Iterable<? extends com.sun.source.tree.Tree>,{com.sun.source.util.TreeScanner%1})
 meth public {com.sun.source.util.TreeScanner%0} visitAnnotatedType(com.sun.source.tree.AnnotatedTypeTree,{com.sun.source.util.TreeScanner%1})
 meth public {com.sun.source.util.TreeScanner%0} visitAnnotation(com.sun.source.tree.AnnotationTree,{com.sun.source.util.TreeScanner%1})
+meth public {com.sun.source.util.TreeScanner%0} visitAnyPattern(com.sun.source.tree.AnyPatternTree,{com.sun.source.util.TreeScanner%1})
 meth public {com.sun.source.util.TreeScanner%0} visitArrayAccess(com.sun.source.tree.ArrayAccessTree,{com.sun.source.util.TreeScanner%1})
 meth public {com.sun.source.util.TreeScanner%0} visitArrayType(com.sun.source.tree.ArrayTypeTree,{com.sun.source.util.TreeScanner%1})
 meth public {com.sun.source.util.TreeScanner%0} visitAssert(com.sun.source.tree.AssertTree,{com.sun.source.util.TreeScanner%1})
@@ -133,7 +134,6 @@ meth public {com.sun.source.util.TreeScanner%0} visitOther(com.sun.source.tree.T
 meth public {com.sun.source.util.TreeScanner%0} visitPackage(com.sun.source.tree.PackageTree,{com.sun.source.util.TreeScanner%1})
 meth public {com.sun.source.util.TreeScanner%0} visitParameterizedType(com.sun.source.tree.ParameterizedTypeTree,{com.sun.source.util.TreeScanner%1})
 meth public {com.sun.source.util.TreeScanner%0} visitParenthesized(com.sun.source.tree.ParenthesizedTree,{com.sun.source.util.TreeScanner%1})
-meth public {com.sun.source.util.TreeScanner%0} visitParenthesizedPattern(com.sun.source.tree.ParenthesizedPatternTree,{com.sun.source.util.TreeScanner%1})
 meth public {com.sun.source.util.TreeScanner%0} visitPatternCaseLabel(com.sun.source.tree.PatternCaseLabelTree,{com.sun.source.util.TreeScanner%1})
 meth public {com.sun.source.util.TreeScanner%0} visitPrimitiveType(com.sun.source.tree.PrimitiveTypeTree,{com.sun.source.util.TreeScanner%1})
 meth public {com.sun.source.util.TreeScanner%0} visitProvides(com.sun.source.tree.ProvidesTree,{com.sun.source.util.TreeScanner%1})
@@ -1027,7 +1027,7 @@ meth public java.util.List<? extends com.sun.source.tree.MethodTree> createOverr
 meth public static org.netbeans.api.java.source.GeneratorUtilities get(org.netbeans.api.java.source.WorkingCopy)
 meth public void copyComments(com.sun.source.tree.Tree,com.sun.source.tree.Tree,boolean)
 supr java.lang.Object
-hfds CLASS_NAME,DEFAULT_RETURN_TYPE_VALUE,GENERATED_METHOD_BODY,LAMBDA_BODY,LAMBDA_EXPRESSION,METHOD_NAME,METHOD_RETURN_TYPE,OVERRIDDEN_METHOD_BODY,SCRIPT_ENGINE_ATTR,SIMPLE_CLASS_NAME,STRING_OUTPUT_MODE_ATTR,SUPER_METHOD_CALL,copy,manager
+hfds CLASS_KIND,CLASS_NAME,DEFAULT_RETURN_TYPE_VALUE,GENERATED_METHOD_BODY,LAMBDA_BODY,LAMBDA_EXPRESSION,METHOD_NAME,METHOD_RETURN_TYPE,OVERRIDDEN_METHOD_BODY,SCRIPT_ENGINE_ATTR,SIMPLE_CLASS_NAME,STRING_OUTPUT_MODE_ATTR,SUPER_METHOD_CALL,copy,manager
 hcls ClassMemberComparator,FieldRefVisitor,ImportsComparator
 
 CLSS public abstract org.netbeans.api.java.source.JavaParserResultTask<%0 extends org.netbeans.modules.parsing.spi.Parser$Result>
@@ -1293,6 +1293,7 @@ meth public com.sun.source.doctree.AttributeTree Attribute(java.lang.CharSequenc
 meth public com.sun.source.doctree.AuthorTree Author(java.util.List<? extends com.sun.source.doctree.DocTree>)
 meth public com.sun.source.doctree.CommentTree Comment(java.lang.String)
 meth public com.sun.source.doctree.DeprecatedTree Deprecated(java.util.List<? extends com.sun.source.doctree.DocTree>)
+meth public com.sun.source.doctree.DocCommentTree DocComment(java.util.List<? extends com.sun.source.doctree.DocTree>,java.util.List<? extends com.sun.source.doctree.DocTree>)
 meth public com.sun.source.doctree.DocCommentTree DocComment(java.util.List<? extends com.sun.source.doctree.DocTree>,java.util.List<? extends com.sun.source.doctree.DocTree>,java.util.List<? extends com.sun.source.doctree.DocTree>)
 meth public com.sun.source.doctree.DocRootTree DocRoot()
 meth public com.sun.source.doctree.EndElementTree EndElement(java.lang.CharSequence)
@@ -1344,6 +1345,8 @@ meth public com.sun.source.tree.BreakTree Break(java.lang.CharSequence)
 meth public com.sun.source.tree.CaseTree Case(com.sun.source.tree.ExpressionTree,java.util.List<? extends com.sun.source.tree.StatementTree>)
 meth public com.sun.source.tree.CaseTree Case(java.util.List<? extends com.sun.source.tree.ExpressionTree>,com.sun.source.tree.Tree)
 meth public com.sun.source.tree.CaseTree CaseMultipleLabels(java.util.List<? extends com.sun.source.tree.ExpressionTree>,java.util.List<? extends com.sun.source.tree.StatementTree>)
+meth public com.sun.source.tree.CaseTree CasePatterns(java.util.List<? extends com.sun.source.tree.Tree>,com.sun.source.tree.ExpressionTree,com.sun.source.tree.Tree)
+meth public com.sun.source.tree.CaseTree CasePatterns(java.util.List<? extends com.sun.source.tree.Tree>,com.sun.source.tree.ExpressionTree,java.util.List<? extends com.sun.source.tree.StatementTree>)
 meth public com.sun.source.tree.CaseTree CasePatterns(java.util.List<? extends com.sun.source.tree.Tree>,com.sun.source.tree.Tree)
 meth public com.sun.source.tree.CaseTree CasePatterns(java.util.List<? extends com.sun.source.tree.Tree>,java.util.List<? extends com.sun.source.tree.StatementTree>)
 meth public com.sun.source.tree.CaseTree addCaseStatement(com.sun.source.tree.CaseTree,com.sun.source.tree.StatementTree)

@@ -122,6 +122,22 @@ public class ImportDataCreatorTest extends PHPTestBase {
         performTest("class Examp^le {");
     }
 
+    public void testGH6075_01() throws Exception {
+        performTest("function test(): void ^{");
+    }
+
+    public void testGH6039_01() throws Exception {
+        performTest("    public function gh6039_01(): ^array {");
+    }
+
+    public void testGH6247_01() throws Exception {
+        performTest("public function test(): st^atic {");
+    }
+
+    public void testGH7546_01() throws Exception {
+        performTest("class GH7546 ^{");
+    }
+
     private void performTest(String caretLine) throws Exception {
         performTest(caretLine, null);
     }

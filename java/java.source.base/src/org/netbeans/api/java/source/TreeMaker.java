@@ -30,6 +30,7 @@ import com.sun.source.doctree.EntityTree;
 import com.sun.source.doctree.InheritDocTree;
 import com.sun.source.doctree.LinkTree;
 import com.sun.source.doctree.ParamTree;
+import com.sun.source.doctree.RawTextTree;
 import com.sun.source.doctree.ReferenceTree;
 import com.sun.source.doctree.SeeTree;
 import com.sun.source.doctree.SerialDataTree;
@@ -276,9 +277,22 @@ public final class TreeMaker {
      * @since 2.39
      */
     public CaseTree CasePatterns(List<? extends Tree> patterns, Tree body) {
-        return delegate.CaseMultiplePatterns(toCaseLabelTrees(patterns), body);
+        return delegate.CaseMultiplePatterns(toCaseLabelTrees(patterns), null, body);
     }
     
+    /**
+     * Creates a new CaseTree for a rule case (case &lt;constants&gt; -> &lt;body&gt;).
+     *
+     * @param patterns the labels for this case statement.
+     * @param guard the case's guard
+     * @param body the case's body
+     * @see com.sun.source.tree.CaseTree
+     * @since 2.63
+     */
+    public CaseTree CasePatterns(List<? extends Tree> patterns, ExpressionTree guard, Tree body) {
+        return delegate.CaseMultiplePatterns(toCaseLabelTrees(patterns), guard, body);
+    }
+
     /**
      * Creates a new CaseTree.
      *
@@ -288,7 +302,20 @@ public final class TreeMaker {
      * @since 2.39
      */
     public CaseTree CasePatterns(List<? extends Tree> patterns, List<? extends StatementTree> statements) {
-        return delegate.CaseMultiplePatterns(toCaseLabelTrees(patterns), statements);
+        return delegate.CaseMultiplePatterns(toCaseLabelTrees(patterns), null, statements);
+    }
+
+    /**
+     * Creates a new CaseTree.
+     *
+     * @param patterns the labels for this case statement.
+     * @param guard the case's guard
+     * @param statements the list of statements.
+     * @see com.sun.source.tree.CaseTree
+     * @since 2.63
+     */
+    public CaseTree CasePatterns(List<? extends Tree> patterns, ExpressionTree guard, List<? extends StatementTree> statements) {
+        return delegate.CaseMultiplePatterns(toCaseLabelTrees(patterns), guard, statements);
     }
 
     private List<? extends CaseLabelTree> toCaseLabelTrees(List<? extends Tree> patterns) {
@@ -300,7 +327,7 @@ public final class TreeMaker {
                 return delegate.ConstantCaseLabel((ExpressionTree) p);
             }
             if (p instanceof PatternTree) {
-                return delegate.PatternCaseLabel((PatternTree) p, null);
+                return delegate.PatternCaseLabel((PatternTree) p);
             }
             throw new IllegalArgumentException("Invalid pattern kind: " + p.getKind()); //NOI18N
         }).collect(Collectors.toList());
@@ -1251,6 +1278,21 @@ public final class TreeMaker {
         return delegate.Variable(modifiers, name, type, initializer);
     }
     
+    /**
+     * Creates a new VariableTree for a record component.
+     *
+     * @param modifiers the modifiers of this record component.
+     * @param name the name of the record component.
+     * @param type the type of this record component.
+     * @see com.sun.source.tree.VariableTree
+     * @since 2.70
+     */
+    public VariableTree RecordComponent(ModifiersTree modifiers,
+                          CharSequence name,
+                          Tree type) {
+        return delegate.RecordComponent(modifiers, name, type);
+    }
+
     /**
      * Creates a new BindingPatternTree.
      * @deprecated
@@ -3534,8 +3576,30 @@ public final class TreeMaker {
         return delegate.Deprecated(text);
     }
 
-    /**Creates a new javadoc comment.
-     * 
+    /**Creates a new HTML javadoc comment.
+     *
+     * @param fullBody the entire body of the comment
+     * @param tags the block tags of the comment (after the main body)
+     * @return newly created DocCommentTree
+     * @since 2.62
+     */
+    public DocCommentTree DocComment(List<? extends DocTree> fullBody, List<? extends DocTree> tags) {
+        return delegate.DocComment(fullBody, tags);
+    }
+
+    /**Creates a new HTML javadoc comment.
+     *
+     * @param fullBody the entire body of the comment
+     * @param tags the block tags of the comment (after the main body)
+     * @return newly created DocCommentTree
+     * @since 2.71
+     */
+    public DocCommentTree MarkdownDocComment(List<? extends DocTree> fullBody, List<? extends DocTree> tags) {
+        return delegate.MarkdownDocComment(fullBody, tags);
+    }
+
+    /**Creates a new HTML javadoc comment.
+     *
      * @param firstSentence the javadoc comment's first sentence
      * @param body the main body of the comment
      * @param tags the block tags of the comment (after the main body)
@@ -3544,6 +3608,18 @@ public final class TreeMaker {
      */
     public DocCommentTree DocComment(List<? extends DocTree> firstSentence, List<? extends DocTree> body, List<? extends DocTree> tags) {
         return delegate.DocComment(firstSentence, body, tags);
+    }
+
+    /**Creates a new Markdown javadoc comment.
+     *
+     * @param firstSentence the javadoc comment's first sentence
+     * @param body the main body of the comment
+     * @param tags the block tags of the comment (after the main body)
+     * @return newly created DocCommentTree
+     * @since 2.71
+     */
+    public DocCommentTree MarkdownDocComment(List<? extends DocTree> firstSentence, List<? extends DocTree> body, List<? extends DocTree> tags) {
+        return delegate.MarkdownDocComment(firstSentence, body, tags);
     }
 
     /**Creates the DocTree's ParamTree.
@@ -3673,6 +3749,16 @@ public final class TreeMaker {
      */
     public TextTree Text(String text) {
         return delegate.Text(text);
+    }
+
+    /**Creates the DocTree's RawTextTree.
+     *
+     * @param text the text
+     * @return newly created RawTextTree
+     * @since 2.71
+     */
+    public RawTextTree RawText(String text) {
+        return delegate.RawText(text);
     }
 
     /**Creates the DocTree's ThrowsTree that will produce @throws.
@@ -3879,4 +3965,5 @@ public final class TreeMaker {
     public LambdaExpressionTree setLambdaBody(LambdaExpressionTree method, Tree newBody) {
         return delegate.setLambdaBody(method, newBody);
     }
+
 }

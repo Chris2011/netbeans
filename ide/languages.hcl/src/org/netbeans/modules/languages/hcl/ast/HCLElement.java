@@ -18,29 +18,12 @@
  */
 package org.netbeans.modules.languages.hcl.ast;
 
+import java.util.List;
+
 /**
  *
  * @author Laszlo Kishalmi
  */
-public abstract class HCLElement {
-
-    final HCLElement parent;
-
-    public HCLElement(HCLElement parent) {
-        this.parent = parent;
-    }
-
-    public final HCLElement getParent() {
-        return parent;
-    }
-
-    public HCLContainer getContainer() {
-        HCLElement e = parent;
-        while (e != null && !(e instanceof HCLContainer)) {
-            e = e.parent;
-        }
-        return (HCLContainer) e;
-    }
-
-    public abstract String id();
+public sealed interface HCLElement permits HCLExpression, HCLContainer, HCLAttribute {
+    List<? extends HCLElement> elements();
 }

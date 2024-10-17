@@ -19,7 +19,6 @@
 package org.netbeans.modules.maven.hints.pom;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,19 +29,25 @@ import javax.swing.text.Document;
 import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.netbeans.api.project.Project;
 import org.netbeans.modules.editor.NbEditorUtilities;
+import org.netbeans.modules.maven.api.Constants;
 import org.netbeans.modules.maven.hints.pom.spi.Configuration;
 import org.netbeans.modules.maven.hints.pom.spi.POMErrorFixProvider;
 import org.netbeans.modules.maven.indexer.api.NBVersionInfo;
 import org.netbeans.modules.maven.indexer.api.RepositoryQueries;
 import org.netbeans.modules.maven.model.pom.Build;
+import org.netbeans.modules.maven.model.pom.BuildBase;
 import org.netbeans.modules.maven.model.pom.Dependency;
 import org.netbeans.modules.maven.model.pom.DependencyManagement;
 import org.netbeans.modules.maven.model.pom.POMComponent;
 import org.netbeans.modules.maven.model.pom.POMExtensibilityElement;
 import org.netbeans.modules.maven.model.pom.POMModel;
+import org.netbeans.modules.maven.model.pom.POMQName;
+import org.netbeans.modules.maven.model.pom.Plugin;
 import org.netbeans.modules.maven.model.pom.PluginManagement;
+import org.netbeans.modules.maven.model.pom.Profile;
 import org.netbeans.modules.maven.model.pom.Properties;
-import org.netbeans.modules.maven.model.pom.VersionablePOMComponent;
+import org.netbeans.modules.maven.model.pom.ReportPlugin;
+import org.netbeans.modules.maven.model.pom.Reporting;
 import org.netbeans.spi.editor.hints.ChangeInfo;
 import org.netbeans.spi.editor.hints.ErrorDescription;
 import org.netbeans.spi.editor.hints.ErrorDescriptionFactory;
@@ -79,57 +84,121 @@ public class UpdateDependencyHint implements POMErrorFixProvider {
         noMajorUpgrde = getNoMajorUpgradeOption();
 
         Map<POMComponent, ErrorDescription> hints = new HashMap<>();
+        org.netbeans.modules.maven.model.pom.Project project = model.getProject();
 
-        List<Dependency> deps = model.getProject().getDependencies();
-        if (deps != null) {
-            addHintsTo(deps, hints);
-        }
+        addHintsToDependencies(project.getDependencies(), project.getDependencyManagement(), hints);
 
-        DependencyManagement depman = model.getProject().getDependencyManagement();
-        if (depman != null && depman.getDependencies() != null) {
-            addHintsTo(depman.getDependencies(), hints);
-        }
-
-        Build build = model.getProject().getBuild();
+        Build build = project.getBuild();
         if (build != null) {
-            if (build.getPlugins() != null) {
-                addHintsTo(build.getPlugins(), hints);
-            }
+            addHintsToPlugins(build.getPlugins(), build.getPluginManagement(), hints);
+        }
 
-            PluginManagement plugman = build.getPluginManagement();
-            if (plugman != null && plugman.getPlugins() != null) {
-                addHintsTo(plugman.getPlugins(), hints);
+        Reporting reporting = project.getReporting();
+        if (reporting != null) {
+            if (reporting.getReportPlugins() != null) {
+                addHintsTo(reporting.getReportPlugins(), hints);
+            }
+        }
+
+        List<Profile> profiles = project.getProfiles();
+        if (profiles != null) {
+            for (Profile profile : profiles) {
+                addHintsToDependencies(profile.getDependencies(), profile.getDependencyManagement(), hints);
+                BuildBase base = profile.getBuildBase();
+                if (base != null) {
+                    addHintsToPlugins(base.getPlugins(), base.getPluginManagement(), hints);
+                }
             }
         }
 
         return new ArrayList<>(hints.values());
     }
 
-    private void addHintsTo(List<? extends VersionablePOMComponent> components, Map<POMComponent, ErrorDescription> hints) {
+    private void addHintsToDependencies(List<Dependency> deps, DependencyManagement depman, Map<POMComponent, ErrorDescription> hints) {
+        if (deps != null) {
+            addHintsTo(deps, hints);
+        }
+        if (depman != null && depman.getDependencies() != null) {
+            addHintsTo(depman.getDependencies(), hints);
+        }
+    }
 
-        for (VersionablePOMComponent comp : components) {
+    private void addHintsToPlugins(List<Plugin> plugins, PluginManagement plugman, Map<POMComponent, ErrorDescription> hints) {
+        if (plugins != null) {
+            addHintsTo(plugins, hints);
+        }
+        if (plugman != null && plugman.getPlugins() != null) {
+            addHintsTo(plugman.getPlugins(), hints);
+        }
+    }
 
-            String groupId = comp.getGroupId();
-            String artifactId = comp.getArtifactId();
+    // components typically implement VersionablePOMComponent, exceptions would be annotation processor lists
+    private void addHintsTo(List<? extends POMComponent> components, Map<POMComponent, ErrorDescription> hints) {
 
-            if (groupId != null && artifactId != null && !groupId.isEmpty() && !artifactId.isEmpty()) {
+        for (POMComponent comp : components) {
 
-                boolean property = false;
-                String version = comp.getVersion();
+            String groupId = getTextOrNull(comp, comp.getModel().getPOMQNames().GROUPID);
+            String artifactId = getTextOrNull(comp, comp.getModel().getPOMQNames().ARTIFACTID);
+            String version = getTextOrNull(comp, comp.getModel().getPOMQNames().VERSION);
+
+            // no group ID could indicate it is a default maven plugin
+            if (groupId == null && (comp instanceof Plugin || comp instanceof ReportPlugin)) {
+                groupId = Constants.GROUP_APACHE_PLUGINS;
+            }
+
+            // plugin/configuration/annotationProcessorPaths/*/gav
+            if (Constants.GROUP_APACHE_PLUGINS.equals(groupId) && Constants.PLUGIN_COMPILER.equals(artifactId)
+                    && comp instanceof Plugin plugin && plugin.getConfiguration() != null
+                    && PomModelUtils.getFirstChild(plugin.getConfiguration(), "annotationProcessorPaths") instanceof POMExtensibilityElement procs) {
+                addHintsTo(procs.getExtensibilityElements(), hints);
+            }
+
+            if (artifactId != null && groupId != null && version != null) {
+
+                record HintCandidate(String version, POMExtensibilityElement component) {}
+
+                List<HintCandidate> candidates = List.of();
+
                 if (PomModelUtils.isPropertyExpression(version)) {
-                    version = PomModelUtils.getProperty(comp.getModel(), version);
-                    property = true;
+                    // properties can be set in profiles and the properties section
+                    // this collects all candidates which might need an annotation, versions are checked later
+                    candidates = new ArrayList<>();
+                    String propName = PomModelUtils.getPropertyName(version);
+                    Properties props = comp.getModel().getProject().getProperties();
+                    if (props != null && PomModelUtils.getFirstChild(props, propName) instanceof POMExtensibilityElement e) {
+                        candidates.add(new HintCandidate(props.getProperty(propName), e));
+                    }
+                    // check profile properties for candidates
+                    List<Profile> profiles = comp.getModel().getProject().getProfiles();
+                    if (profiles != null) {
+                        for (Profile profile : profiles) {
+                            Properties profProps = profile.getProperties();
+                            if (profProps != null && PomModelUtils.getFirstChild(profProps, propName) instanceof POMExtensibilityElement e) {
+                                candidates.add(new HintCandidate(profProps.getProperty(propName), e));
+                            }
+                        }
+                    }
+                } else {
+                    // simple case - version is directly set where the artifact is declared
+                    if (PomModelUtils.getFirstChild(comp, "version") instanceof POMExtensibilityElement e) {
+                        candidates = List.of(new HintCandidate(version, e));
+                    }
                 }
 
-                if (version != null) {
+                if (candidates.isEmpty()) {
+                    continue;
+                }
+
+                List<NBVersionInfo> versions = RepositoryQueries.getVersionsResult(groupId, artifactId, null).getResults();
+
+                for (HintCandidate candidate : candidates) {
 
                     // don't upgrade clean numerical versions to timestamps or non-numerical versions (other way around is allowed)
-                    boolean allow_qualifier = !isNumerical(version);
-                    boolean allow_timestamp = !noTimestamp(version);
-                    String requiredPrefix = noMajorUpgrde ? getMajorComponentPrefix(version) : "";
+                    boolean allow_qualifier = !isNumerical(candidate.version);
+                    boolean allow_timestamp = !noTimestamp(candidate.version);
+                    String requiredPrefix = noMajorUpgrde ? getMajorComponentPrefix(candidate.version) : "";
 
-                    Optional<ComparableVersion> latest = RepositoryQueries.getVersionsResult(groupId, artifactId, null)
-                            .getResults().stream()
+                    Optional<ComparableVersion> latest = versions.stream()
                             .map(NBVersionInfo::getVersion)
                             .filter((v) -> !v.isEmpty() && v.startsWith(requiredPrefix))
                             .filter((v) -> allow_qualifier || !Character.isDigit(v.charAt(0)) || isNumerical(v))
@@ -137,26 +206,20 @@ public class UpdateDependencyHint implements POMErrorFixProvider {
                             .map(ComparableVersion::new)
                             .max(ComparableVersion::compareTo);
 
-                    if (latest.isPresent() && latest.get().compareTo(new ComparableVersion(version)) > 0) {
-                        POMComponent version_comp = null;
-                        if (property) {
-                            Properties props = comp.getModel().getProject().getProperties();
-                            if (props != null) {
-                                version_comp = PomModelUtils.getFirstChild(props, PomModelUtils.getPropertyName(comp.getVersion()));
-                            }
-                        } else {
-                            version_comp = PomModelUtils.getFirstChild(comp, "version");
-                        }
-                        if (version_comp instanceof POMExtensibilityElement) {
-                            ErrorDescription previous = hints.get(version_comp);
-                            if (previous == null || compare(((UpdateVersionFix) previous.getFixes().getFixes().get(0)).version, version) > 0) {
-                                hints.put(version_comp, createHintForComponent((POMExtensibilityElement) version_comp, latest.get().toString()));
-                            }
+                    if (latest.isPresent() && latest.get().compareTo(new ComparableVersion(candidate.version)) > 0) {
+                        ErrorDescription previous = hints.get(candidate.component);
+                        if (previous == null || compare(((UpdateVersionFix) previous.getFixes().getFixes().get(0)).version, candidate.version) > 0) {
+                            hints.put(candidate.component, createHintForComponent(candidate.component, latest.get().toString()));
                         }
                     }
                 }
             }
         }
+    }
+
+    private static String getTextOrNull(POMComponent comp, POMQName name) {
+        String text = comp.getChildElementText(name.getQName());
+        return text != null && !text.isBlank() ? text : null;
     }
 
     private static boolean isNumerical(String v) {
@@ -168,18 +231,18 @@ public class UpdateDependencyHint implements POMErrorFixProvider {
         return true;
     }
 
-    private boolean noTimestamp(String v) {
+    private static boolean noTimestamp(String v) {
         char[] chars = v.toCharArray();
         for (int i = 0; i < chars.length; i++) {
             if (!(Character.isDigit(chars[i]))) {
                 return i == 0 || Integer.parseInt(v.substring(0, i)) < 10_000;
             }
         }
-        return Integer.parseInt(v) < 10_000;
+        return v.isEmpty() || Integer.parseInt(v) < 10_000;
     }
 
     // example: in '3.14' -> out '3.'
-    private String getMajorComponentPrefix(String v) {
+    private static String getMajorComponentPrefix(String v) {
         int dot = v.indexOf('.');
         if (dot > 0) {
             String major = v.substring(0, dot+1);
@@ -197,7 +260,7 @@ public class UpdateDependencyHint implements POMErrorFixProvider {
     private ErrorDescription createHintForComponent(POMExtensibilityElement comp, String version) {
         Document doc = comp.getModel().getBaseDocument();
         int line = NbEditorUtilities.getLine(doc, comp.findPosition(), false).getLineNumber() + 1;
-        List<Fix> fix =  Collections.singletonList(new UpdateVersionFix(comp, version));
+        List<Fix> fix = List.of(new UpdateVersionFix(comp, version));
         return ErrorDescriptionFactory.createErrorDescription(Severity.HINT, HINT_UpdateDependencyHint() + version, fix, doc, line);
     }
 

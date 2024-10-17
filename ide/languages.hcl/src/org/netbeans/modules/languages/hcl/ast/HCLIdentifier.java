@@ -18,46 +18,42 @@
  */
 package org.netbeans.modules.languages.hcl.ast;
 
+import java.util.List;
+
 /**
  *
  * @author Laszlo Kishalmi
  */
-public abstract class HCLIdentifier extends HCLElement {
+public sealed interface HCLIdentifier extends HCLExpression {
 
-    final String id;
-
-    public HCLIdentifier(HCLElement parent, String id) {
-        super(parent);
-        this.id = id;
-    }
-
+    String id();
+    
     @Override
-    public String id() {
-        return id;
+    default List<? extends HCLExpression> elements() {
+        return List.of();
     }
-
-    public final static class SimpleId extends HCLIdentifier {
-
-        public SimpleId(HCLElement parent, String id) {
-            super(parent, id);
-        }
+    
+    public record SimpleId(String id) implements HCLIdentifier {
 
         @Override
-        public String toString() {
+        public String asString() {
             return id;
         }
     }
 
-    public final static class StringId extends HCLIdentifier {
-
-        public StringId(HCLElement parent, String id) {
-            super(parent, id);
-        }
+    public record StringId(String id) implements HCLIdentifier {
 
         @Override
-        public String toString() {
-            return "\"" + id + "\"";
+        public String asString() {
+            return id;
         }
+    }
 
+    public record ScopedId(HCLIdentifier parent, String id) implements HCLIdentifier {
+
+        @Override
+        public String asString() {
+            return HCLExpression.asString(parent) + "::" + id;
+        }
     }
 }
